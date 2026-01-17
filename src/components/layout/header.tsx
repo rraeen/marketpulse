@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -264,7 +264,9 @@ export function Header() {
 
           {/* Search - Desktop */}
           <div className="hidden md:block lg:hidden flex-1 max-w-xs mx-4">
-            <SearchInput />
+            <Suspense fallback={<div className="h-10" />}>
+              <SearchInput />
+            </Suspense>
           </div>
 
           {/* Actions */}
@@ -348,21 +350,23 @@ export function Header() {
         </nav>
 
         {/* Mobile Search Bar */}
-        <AnimatePresence>
-          {isSearchOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="md:hidden border-t border-border overflow-hidden"
-            >
-              <div className="p-4">
-                <SearchInput />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          <AnimatePresence>
+            {isSearchOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="md:hidden border-t border-border overflow-hidden"
+              >
+                <div className="p-4">
+                  <Suspense fallback={<div className="h-10" />}>
+                    <SearchInput />
+                  </Suspense>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
       </Container>
 
       {/* Mobile Menu */}

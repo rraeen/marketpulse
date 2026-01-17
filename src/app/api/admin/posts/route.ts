@@ -32,8 +32,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  let requestCategoryId = "";
   try {
     const { title, body, featuredImageUrl, categoryId, status, isTrending } = await request.json();
+    requestCategoryId = categoryId;
 
     if (!title || !body || !categoryId || !status) {
       return NextResponse.json(
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
     
     if (err.message.includes('Invalid or inactive category')) {
       return NextResponse.json({ 
-        error: `Category validation failed. Please ensure the category exists and is active. CategoryId: ${categoryId}` 
+        error: `Category validation failed. Please ensure the category exists and is active. CategoryId: ${requestCategoryId}` 
       }, { status: 400 });
     }
     

@@ -45,7 +45,8 @@ export async function GET(
       console.error("Admin GET post - post not found for ID:", id);
       // Try to query all posts to see what IDs exist (for debugging)
       try {
-        const db = (await import('@/lib/db')).getDb();
+        const { getDb } = await import('@/lib/db');
+        const db = await getDb();
         const postsCollection = db.collection('posts');
         const allPosts = await postsCollection.find({}).limit(5).toArray();
         console.error("Admin GET post - Sample post IDs in DB:", allPosts.map(p => p._id?.toString()));

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     }
 
     // Get trending posts
-    const trendingPosts = await getTrendingPosts(limit, categoryId);
+    const trendingPosts = await getTrendingPosts(limit, categoryId ?? undefined);
 
     // Populate category information for each post
     const postsWithCategories = await Promise.all(
