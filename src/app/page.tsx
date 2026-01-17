@@ -62,7 +62,7 @@ export default function Home() {
               variants={itemVariants}
               className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6 leading-tight"
             >
-              Professional Market
+              Professional Market Pulse
               <br />
               <span className="text-muted-foreground">Insights & Guidance</span>
             </motion.h1>
