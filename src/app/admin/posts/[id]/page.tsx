@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { CategorySelector } from "@/components/admin/category-selector";
+import { TrendingToggle } from "@/components/admin/trending-toggle";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Loader2, Upload, X } from "lucide-react";
 import { use } from "react";
@@ -20,6 +21,7 @@ interface PostFormData {
   categoryId: string;
   status: "Draft" | "Published";
   featuredImageUrl?: string;
+  isTrending?: boolean;
 }
 
 export default function EditPostPage({
@@ -36,6 +38,7 @@ export default function EditPostPage({
     categoryId: "",
     status: "Draft",
     featuredImageUrl: "",
+    isTrending: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +76,7 @@ export default function EditPostPage({
           categoryId: post.categoryId,
           status: post.status,
           featuredImageUrl: post.featuredImageUrl || "",
+          isTrending: post.isTrending || false,
         });
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Failed to fetch post' }));
@@ -449,6 +453,29 @@ export default function EditPostPage({
                 Draft posts are not visible to the public
               </p>
             </div>
+
+            {/* Trending Toggle */}
+            {id !== "new" && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  Trending Status
+                </label>
+                <div className="flex items-center gap-3 p-4 border border-border rounded-md bg-muted/30">
+                  <TrendingToggle
+                    postId={id}
+                    isTrending={formData.isTrending || false}
+                    onToggle={(postId, newValue) => {
+                      setFormData((prev) => ({ ...prev, isTrending: newValue }));
+                    }}
+                    size="md"
+                    showLabel={true}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This post will appear in the trending sidebar on category pages
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-4 pt-4">

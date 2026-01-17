@@ -52,6 +52,7 @@ export async function ensureCollectionSchemas(db: Db) {
         "body",
         "categoryId",
         "status",
+        "isTrending",
         "adminId",
         "createdAt",
         "updatedAt",
@@ -76,6 +77,10 @@ export async function ensureCollectionSchemas(db: Db) {
         status: {
           enum: ["Draft", "Published"],
           description: "Status must be either Draft or Published",
+        },
+        isTrending: {
+          bsonType: "bool",
+          description: "isTrending must be a boolean indicating if post is marked as trending",
         },
         adminId: {
           bsonType: "objectId",

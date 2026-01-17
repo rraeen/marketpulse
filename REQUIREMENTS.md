@@ -1,0 +1,123 @@
+# Business Requirements Document: MarketPulse - Financial Advisory Platform
+
+**Version:** 1.1
+**Project Phase:** Phase 1 (Foundational Content Hub)
+**Role:** Business Analyst
+
+---
+
+## 1. Project Vision & Goals
+
+The objective is to build a professional, high-trust digital presence for a financial adviser. The platform, branded as **MarketPulse**, serves as a content hub for market insights, establishing authority and building a subscriber base before moving into monetization in Phase 2.
+
+### Primary Objectives:
+
+- **Establish Authority:** Deliver expert financial content in a modern, professional UI.
+- **Audience Building:** Convert anonymous visitors into registered users through notification value.
+- **Trust:** Ensure the platform looks stable, professional, and secure.
+
+---
+
+## 2. User Personas
+
+| Persona             | Description                         | Primary Goal                                               |
+| :------------------ | :---------------------------------- | :--------------------------------------------------------- |
+| **Admin (Adviser)** | The content creator and site owner. | Publish and manage advisory content easily without coding. |
+| **Guest User**      | Unauthenticated visitor.            | Consume free financial insights and market updates.        |
+| **Registered User** | Authenticated visitor (opt-in).     | Stay updated with new content via automated notifications. |
+
+---
+
+## 3. Functional Requirements
+
+### 3.1 Content Management System (CMS)
+
+The Admin must be able to manage the lifecycle of advisory content.
+
+- **FR-1.1: Content Creation:** Admin can create posts with a title, body (Rich Text/HTML), and featured image.
+- **FR-1.2: Dynamic Categorization:** Posts are assigned to categories and subcategories (1 level deep) managed by the Admin.
+- **FR-1.3: Draft/Publish:** Admin can save posts as "Draft" or "Published".
+- **FR-1.4: Trending Designation:** Admin can mark specific posts as "Trending" via an icon (e.g., a "view" or "star" icon) in the post management interface.
+- **Acceptance Criteria for Testing:**
+  - Verify a "Draft" post does not appear on the public site.
+  - Verify images upload and render correctly within posts.
+  - Verify categories are filtered correctly on the frontend.
+  - Verify the "Trending" flag can be toggled on/off by the Admin.
+
+### 3.2 Public Frontend (Discovery)
+
+A modern, responsive interface for content consumption.
+
+- **FR-2.1: Dynamic Navbar:** Displays main categories with a "More" dropdown for overflow and hover support for subcategories.
+- **FR-2.2: Category Pages (Layout):**
+  - **Main Content (2/3 width):** List of posts for the selected category/subcategory.
+  - **Trending Section (1/3 width):** A right-side sidebar displaying posts marked as "Trending".
+- **FR-2.3: Search:** A keyword search to find specific articles by title or content.
+- **FR-2.4: Professional UI:** Use of a "Financial Industry" aesthetic (e.g., high-contrast typography, deep blue/grey/white palette).
+- **Acceptance Criteria for Testing:**
+  - Verify the 2/3 and 1/3 layout on category pages.
+  - Verify the Trending section only displays posts marked as trending by the Admin.
+  - Verify navigation links lead to the correct filtered category pages.
+
+### 3.3 User Accounts & Notifications
+
+- **FR-3.1: User Registration:** Guests can sign up using Email, Password, and Name.
+- **FR-3.2: Login/Logout:** Standard authentication flow.
+- **FR-3.3: Automated Notifications:** When a post is moved from "Draft" to "Published", all registered users should be triggered for a notification.
+- **Acceptance Criteria for Testing:**
+  - Verify a registered user receives an email/alert within 5 minutes of a new post being published.
+
+### 3.4 Subscription Concept (Phase 1)
+
+- **FR-4.1: Interest Toggle:** Registered users have a profile setting: "I am interested in Premium Advisory Content." (Boolean).
+- **Acceptance Criteria for Testing:**
+  - Verify this preference is saved in the database for future marketing.
+
+---
+
+## 4. Scope Management
+
+### 4.1 In Scope (Phase 1)
+
+- Full CMS for one Admin user with Category and Trending management.
+- Publicly readable articles (No paywall yet).
+- Two-column layout on category pages (Main + Trending).
+- User registration and profile management.
+- Basic Email notifications for new content.
+
+### 4.2 Out of Scope (Phase 1)
+
+- **Payments:** No Stripe/PayPal integration.
+- **Gated Content:** No "Members Only" articles.
+- **Real-time Data:** No live stock tickers or API-driven charts.
+- **Comments:** No discussion or user-feedback loops.
+
+---
+
+## 5. Non-Functional Requirements
+
+| ID        | Category        | Requirement                                                        |
+| :-------- | :-------------- | :----------------------------------------------------------------- |
+| **NFR-1** | **Performance** | Pages should load in under 2 seconds on standard broadband.        |
+| **NFR-2** | **Usability**   | The CMS must be usable by a non-technical person without a manual. |
+| **NFR-3** | **Scalability** | Architecture must support a future transition to paid tiers.       |
+| **NFR-4** | **Trust**       | Presence of SSL and clear legal disclaimers on all advisory pages. |
+
+---
+
+## 6. High-Level Data Model (For Architect)
+
+The system should track:
+
+1.  **User:** (ID, Name, Email, PasswordHash, Role [Admin/User], IsPremiumInterested)
+2.  **Post:** (ID, Title, Body, CategoryID, Status [Draft/Published], IsTrending [Boolean], CreatedAt, AdminID)
+3.  **Category:** (ID, Name, Slug, ParentID [for subcategories], Order)
+
+---
+
+## 7. Assumptions & Open Questions
+
+- **Assumption:** The adviser is the only person who will ever log into the CMS (Single Admin).
+- **Assumption:** Email is the primary notification channel for Phase 1.
+- **Question:** How many trending posts should be displayed in the sidebar (e.g., top 5 latest trending posts)?
+- **Question:** Are there specific legal disclaimers that must appear in the footer of every page?

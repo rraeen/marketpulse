@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed:admin": "ts-node scripts/seed-admin.ts",
+    "migrate:trending": "ts-node scripts/migrate-trending.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

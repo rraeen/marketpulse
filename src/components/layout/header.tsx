@@ -78,14 +78,6 @@ export function Header() {
     }, 300);
   };
 
-  const handleResetHover = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setHoveredCategory(null);
-    setHoveredMore(false);
-  };
-
   const handleMoreMouseEnter = () => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
@@ -138,10 +130,7 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div
-            className="hidden lg:flex items-center gap-6 flex-1"
-            onMouseLeave={handleResetHover}
-          >
+          <div className="hidden lg:flex items-center gap-6 flex-1">
             {/* First 3 Categories */}
             {firstThree.map((category) => {
               const isActive = pathname.startsWith(`/category/${category.slug}`);

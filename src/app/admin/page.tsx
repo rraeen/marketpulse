@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Loader2, Plus, Edit, Trash2, Eye } from "lucide-react";
+import { TrendingToggle } from "@/components/admin/trending-toggle";
 
 interface Post {
   _id: string;
@@ -15,6 +16,7 @@ interface Post {
   categoryId: string;
   status: string;
   updatedAt: string;
+  isTrending?: boolean;
 }
 
 export default function AdminDashboard() {
@@ -183,6 +185,18 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <TrendingToggle
+                        postId={post._id}
+                        isTrending={post.isTrending || false}
+                        onToggle={(postId, newValue) => {
+                          setPosts((prev) =>
+                            prev.map((p) =>
+                              p._id === postId ? { ...p, isTrending: newValue } : p
+                            )
+                          );
+                        }}
+                        size="md"
+                      />
                       {post.status === "Published" && (
                         <Link href={`/post/${post._id}`} target="_blank">
                           <Button variant="ghost" size="sm">

@@ -105,7 +105,8 @@ export async function PATCH(
       status: data.status, 
       title: data.title?.substring(0, 30),
       hasBody: !!data.body,
-      categoryId: data.categoryId 
+      categoryId: data.categoryId,
+      isTrending: data.isTrending
     });
 
     // Validate categoryId if provided
@@ -120,6 +121,14 @@ export async function PATCH(
     if (data.status && !isValidStatus(data.status)) {
       return NextResponse.json(
         { error: "Invalid status. Must be Draft or Published." },
+        { status: 400 }
+      );
+    }
+
+    // Validate isTrending if provided
+    if (data.isTrending !== undefined && typeof data.isTrending !== 'boolean') {
+      return NextResponse.json(
+        { error: "isTrending must be a boolean" },
         { status: 400 }
       );
     }

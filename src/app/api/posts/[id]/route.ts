@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server';
 import { getPostById } from '@/lib/services/post';
 import { getCategoryById } from '@/lib/services/category';
 import { isValidObjectId } from '@/lib/utils/objectid-validation';
+import { ObjectId } from 'mongodb';
+
+type CategoryInfo = {
+  _id?: ObjectId;
+  name: string;
+  slug: string;
+  parent?: {
+    _id?: ObjectId;
+    name: string;
+    slug: string;
+  };
+} | null;
 
 export async function GET(
   request: Request,
@@ -23,7 +35,7 @@ export async function GET(
     // Populate category information
     const category = await getCategoryById(post.categoryId.toString());
     
-    let categoryInfo: any = null;
+    let categoryInfo: CategoryInfo = null;
     if (category) {
       categoryInfo = {
         _id: category._id,

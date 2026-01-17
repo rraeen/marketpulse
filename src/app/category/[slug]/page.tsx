@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { CategoryPostsList } from "@/components/category/category-posts-list";
+import { TrendingSidebar } from "@/components/trending/trending-sidebar";
 import { ChevronRight } from "lucide-react";
 import { Category } from "@/lib/types/category";
 
@@ -103,13 +104,21 @@ export default async function CategoryPage({
           )}
         </div>
 
-        {/* Posts List with Infinite Scroll */}
-        <div className="max-w-4xl mx-auto">
-          <CategoryPostsList
-            categorySlug={category.slug}
-            initialPosts={posts}
-            initialTotal={total}
-          />
+        {/* Main Content + Trending Sidebar Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content - 2/3 width */}
+          <div className="lg:col-span-2">
+            <CategoryPostsList
+              categorySlug={category.slug}
+              initialPosts={posts}
+              initialTotal={total}
+            />
+          </div>
+
+          {/* Trending Sidebar - 1/3 width */}
+          <div className="lg:col-span-1">
+            <TrendingSidebar limit={5} />
+          </div>
         </div>
       </Container>
     </div>

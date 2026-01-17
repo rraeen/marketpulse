@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { title, body, featuredImageUrl, categoryId, status } = await request.json();
+    const { title, body, featuredImageUrl, categoryId, status, isTrending } = await request.json();
 
     if (!title || !body || !categoryId || !status) {
       return NextResponse.json(
@@ -53,6 +53,14 @@ export async function POST(request: Request) {
     if (!isValidStatus(status)) {
       return NextResponse.json(
         { error: 'Invalid status. Must be Draft or Published.' },
+        { status: 400 }
+      );
+    }
+
+    // Validate isTrending if provided
+    if (isTrending !== undefined && typeof isTrending !== 'boolean') {
+      return NextResponse.json(
+        { error: 'isTrending must be a boolean' },
         { status: 400 }
       );
     }
@@ -78,6 +86,7 @@ export async function POST(request: Request) {
       featuredImageUrl,
       categoryId: categoryObjectId,
       status,
+      isTrending: isTrending ?? false, // Default to false if not provided
       adminId: typeof user._id === 'string' ? new ObjectId(user._id) : user._id,
     });
 

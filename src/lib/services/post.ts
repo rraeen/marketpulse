@@ -2,7 +2,7 @@ import { getDb } from '../db';
 import { Post } from '../models/post';
 import { ObjectId, type Filter } from 'mongodb';
 import { notifyUsersOfNewPost } from './notification';
-import { getCategoryById, getCategoryBySlug } from './category';
+import { getCategoryById } from './category';
 
 /**
  * Validate that a category exists and is active
@@ -89,6 +89,7 @@ export async function createPost(data: Omit<Post, '_id' | 'createdAt' | 'updated
 
   const newPost: Post = {
     ...data,
+    isTrending: data.isTrending ?? false, // Default to false if not provided
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -224,16 +225,10 @@ export async function getPostById(id: string) {
     const objectId = new ObjectId(trimmedId);
     console.log("getPostById - Querying with ID:", trimmedId, "ObjectId:", objectId.toString());
     
-    // Try querying with ObjectId first
-    let post = await postsCollection.findOne({ _id: objectId });
+    // Query with ObjectId
+    const post = await postsCollection.findOne({ _id: objectId });
     
-    // If not found, try querying as string (fallback, though shouldn't be needed)
-    if (!post) {
-      console.log("getPostById - Not found with ObjectId, trying string query");
-      post = await postsCollection.findOne({ _id: trimmedId } as any);
-    }
-    
-    // If still not found, try to find any post to verify DB connection
+    // If not found, try to find any post to verify DB connection (for debugging)
     if (!post) {
       const count = await postsCollection.countDocuments({});
       console.log("getPostById - Post not found. Total posts in collection:", count);
@@ -326,4 +321,71 @@ export async function deletePost(id: string) {
     console.error("deletePost - Error:", error);
     throw error;
   }
+}
+
+/**
+ * Toggle trending status of a post
+ */
+export async function toggleTrending(
+  postId: string,
+  isTrending: boolean
+): Promise<Post | null> {
+  const db = await getDb();
+  const postsCollection = db.collection<Post>('posts');
+
+  try {
+    const objectId = new ObjectId(postId);
+    
+    const result = await postsCollection.findOneAndUpdate(
+      { _id: objectId },
+      {
+        $set: {
+          isTrending,
+          updatedAt: new Date(),
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+    return result as Post | null;
+  } catch (error) {
+    console.error('toggleTrending - Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get trending posts (for sidebar display)
+ */
+export async function getTrendingPosts(
+  limit: number = 5,
+  categoryId?: string
+): Promise<Post[]> {
+  const db = await getDb();
+  const postsCollection = db.collection<Post>('posts');
+
+  const filter: Filter<Post> = {
+    isTrending: true,
+    status: 'Published',
+  };
+
+  if (categoryId) {
+    try {
+      filter.categoryId = new ObjectId(categoryId);
+    } catch {
+      // Invalid ObjectId, return empty array
+      return [];
+    }
+  }
+
+  // Limit to max 20
+  const effectiveLimit = Math.min(Math.max(limit, 1), 20);
+
+  const posts = await postsCollection
+    .find(filter)
+    .sort({ createdAt: -1 })
+    .limit(effectiveLimit)
+    .toArray();
+
+  return posts;
 }
