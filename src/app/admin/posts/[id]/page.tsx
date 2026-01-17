@@ -368,6 +368,7 @@ export default function EditPostPage({
                     alt="Featured"
                     fill
                     className="object-cover"
+                    unoptimized={formData.featuredImageUrl.startsWith('data:')}
                   />
                   <button
                     type="button"

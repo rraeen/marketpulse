@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join, resolve, normalize } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
 export async function POST(request: Request) {
-
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -32,62 +28,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Convert file to base64 data URI
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    const extension = file.type.split('/')[1];
-    const fileName = `${uuidv4()}.${extension}`;
+    const base64 = buffer.toString('base64');
+    const dataUri = `data:${file.type};base64,${base64}`;
     
-    // Define upload directory - handle both development and production (Docker/standalone)
-    // In Next.js standalone mode, public folder is copied to root
-    // In development, it's in process.cwd()/public
-    let uploadsDir: string;
-    try {
-      // Try standard location first
-      uploadsDir = join(process.cwd(), 'public', 'uploads');
-      await mkdir(uploadsDir, { recursive: true });
-    } catch (error) {
-      // Fallback: try root-level public/uploads (for standalone mode)
-      try {
-        uploadsDir = join(process.cwd(), 'uploads');
-        await mkdir(uploadsDir, { recursive: true });
-      } catch (fallbackError) {
-        console.error('Failed to create uploads directory:', error, fallbackError);
-        return NextResponse.json(
-          { error: 'Failed to create upload directory. Check file system permissions.' },
-          { status: 500 }
-        );
-      }
-    }
-    
-    // Construct file path and validate it's within the uploads directory
-    const filePath = join(uploadsDir, fileName);
-    const normalizedPath = normalize(resolve(filePath));
-    const normalizedUploadsDir = normalize(resolve(uploadsDir));
-    
-    // Security: Ensure the final path is within the uploads directory
-    if (!normalizedPath.startsWith(normalizedUploadsDir)) {
-      return NextResponse.json(
-        { error: 'Invalid file path' },
-        { status: 400 }
-      );
-    }
-
-    try {
-      await writeFile(filePath, buffer);
-      // Use relative URL that works in both dev and production
-      const url = uploadsDir.includes('public') 
-        ? `/uploads/${fileName}` 
-        : `/uploads/${fileName}`;
-      
-      return NextResponse.json({ url });
-    } catch (writeError) {
-      console.error('Failed to write file:', writeError);
-      return NextResponse.json(
-        { error: 'Failed to save file. Check file system permissions.' },
-        { status: 500 }
-      );
-    }
+    // Return the base64 data URI to be stored in the database
+    return NextResponse.json({ url: dataUri });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
