@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Loader2, Plus, Edit, Trash2, Eye } from "lucide-react";
 import { TrendingToggle } from "@/components/admin/trending-toggle";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { useToast } from "@/components/ui/toast";
 
 interface Post {
   _id: string;
@@ -22,8 +24,11 @@ interface Post {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { success, error: showError } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "Admin")) {
@@ -59,50 +64,46 @@ export default function AdminDashboard() {
     }
   }, [user, fetchPosts]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+  const handleDeleteClick = useCallback((id: string) => {
+    setDeletingPostId(id);
+  }, []);
 
-    const postId = String(id).trim();
-    console.log("Deleting post - ID:", postId, "Type:", typeof postId);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deletingPostId) return;
+
+    const postId = String(deletingPostId).trim();
+    setIsDeleting(true);
 
     try {
       const res = await fetch(`/api/admin/posts/${encodeURIComponent(postId)}`, {
         method: "DELETE",
       });
 
-      console.log("Delete response:", {
-        status: res.status,
-        ok: res.ok,
-        statusText: res.statusText,
-      });
-
       if (res.ok) {
-        setPosts((prevPosts) => prevPosts.filter((p) => p._id !== id));
-        console.log("Post deleted successfully");
+        setPosts((prevPosts) => prevPosts.filter((p) => p._id !== deletingPostId));
+        success("Post deleted successfully");
+        setDeletingPostId(null);
       } else {
         let errorMessage = `Failed to delete post (${res.status})`;
         try {
           const errorData = await res.json();
           errorMessage = errorData.error || errorMessage;
-          console.error("Delete post error:", {
-            status: res.status,
-            errorData,
-          });
-        } catch (jsonError) {
-          const text = await res.text().catch(() => '');
-          errorMessage = text || errorMessage;
-          console.error("Delete post error - non-JSON response:", {
-            status: res.status,
-            text: text.substring(0, 200),
-          });
+        } catch {
+          // Use default error message
         }
-        alert(errorMessage);
+        showError(errorMessage);
       }
     } catch (error) {
       console.error("Error deleting post:", error);
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
-      alert(`Error deleting post: ${errorMessage}`);
+      showError(`Error deleting post: ${errorMessage}`);
+    } finally {
+      setIsDeleting(false);
     }
+  }, [deletingPostId, success, showError]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeletingPostId(null);
   }, []);
 
   if (authLoading || (isLoading && user?.role === "Admin")) {
@@ -212,7 +213,7 @@ export default function AdminDashboard() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(post._id)}
+                        onClick={() => handleDeleteClick(post._id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -224,6 +225,19 @@ export default function AdminDashboard() {
           </div>
         </motion.div>
       </Container>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!deletingPostId}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Post"
+        message="Are you sure you want to delete this post? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

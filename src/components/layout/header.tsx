@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
 import { Menu, X, Search as SearchIcon, User, LogOut, ChevronDown } from "lucide-react";
@@ -118,15 +119,23 @@ export function Header() {
           ? "bg-background/80 backdrop-blur-md border-border/50 shadow-sm"
           : "bg-background border-border"
       )}
+      style={{ position: "fixed", top: 0, left: 0, right: 0 }}
     >
       <Container>
         <nav className="flex h-16 items-center gap-8">
           {/* Logo */}
           <Link
             href="/"
-            className="text-xl font-semibold tracking-tight transition-opacity hover:opacity-70"
+            className="flex items-center transition-opacity hover:opacity-70"
           >
-            MarketPulse
+            <Image
+              src="/logo.png"
+              alt="MarketPulse"
+              width={140}
+              height={40}
+              className="h-8 w-auto"
+              priority
+            />
           </Link>
 
           {/* Desktop Navigation */}

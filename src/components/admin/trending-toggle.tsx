@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useToast } from "@/components/ui/toast";
 
 interface TrendingToggleProps {
   postId: string;
@@ -19,6 +20,7 @@ export function TrendingToggle({
   size = "md",
   showLabel = false,
 }: TrendingToggleProps) {
+  const { success, error: showError } = useToast();
   const [isTrending, setIsTrending] = useState(initialIsTrending);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -41,11 +43,12 @@ export function TrendingToggle({
       }
 
       onToggle?.(postId, newValue);
+      success(newValue ? "Post marked as trending" : "Post removed from trending");
     } catch (error) {
       // Rollback on error
       setIsTrending(isTrending);
       console.error("Error toggling trending:", error);
-      alert("Failed to update trending status. Please try again.");
+      showError("Failed to update trending status. Please try again.");
     } finally {
       setIsLoading(false);
     }
