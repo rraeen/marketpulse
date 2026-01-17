@@ -39,6 +39,8 @@ const itemVariants: Variants = {
 export default function Home() {
   return (
     <div className="flex-1">
+    
+
       {/* Hero Section */}
       <section className="relative py-24 md:py-32 lg:py-40 overflow-hidden">
         <Container>

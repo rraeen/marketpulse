@@ -50,10 +50,23 @@ export default function EditPostPage({
   }, [user, authLoading, router]);
 
   const fetchPost = useCallback(async () => {
+    // Ensure ID is a string and properly formatted
+    const postId = String(id).trim();
+    console.log("Frontend fetchPost - ID:", postId, "Type:", typeof postId, "Length:", postId.length, "URL:", `/api/admin/posts/${postId}`);
+    
+    if (!postId || postId === 'undefined' || postId === 'null') {
+      console.error("Frontend fetchPost - Invalid ID:", id);
+      setServerError("Invalid post ID");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const res = await fetch(`/api/admin/posts/${id}`);
+      const res = await fetch(`/api/admin/posts/${encodeURIComponent(postId)}`);
+      console.log("Frontend fetchPost - Response status:", res.status, "OK:", res.ok);
       if (res.ok) {
         const post = await res.json();
+        console.log("Frontend fetchPost - Post received:", post._id, "Status:", post.status);
         setFormData({
           title: post.title,
           body: post.body,
@@ -61,9 +74,18 @@ export default function EditPostPage({
           status: post.status,
           featuredImageUrl: post.featuredImageUrl || "",
         });
+      } else {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to fetch post' }));
+        console.error("Frontend fetchPost - Error response:", {
+          status: res.status,
+          statusText: res.statusText,
+          errorData,
+        });
+        setServerError(errorData.error || `Failed to load post (${res.status})`);
       }
     } catch (error) {
-      console.error("Error fetching post:", error);
+      console.error("Frontend fetchPost - Exception:", error);
+      setServerError("Failed to load post. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -123,16 +145,19 @@ export default function EditPostPage({
       });
 
       if (!res.ok) {
-        throw new Error("Upload failed");
+        const errorData = await res.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(errorData.error || `Upload failed (${res.status})`);
       }
 
       const data = await res.json();
       setFormData((prev) => ({ ...prev, featuredImageUrl: data.url }));
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload image. Please try again.";
       setErrors((prev) => ({
         ...prev,
-        image: "Failed to upload image. Please try again.",
+        image: errorMessage,
       }));
+      console.error("Image upload error:", error);
     } finally {
       setIsUploading(false);
     }
@@ -161,13 +186,26 @@ export default function EditPostPage({
     e.preventDefault();
     setServerError("");
 
-    if (!validate()) return;
+    if (!validate()) {
+      console.log("Form validation failed");
+      return;
+    }
 
     setIsSaving(true);
 
     try {
-      const url = id === "new" ? "/api/admin/posts" : `/api/admin/posts/${id}`;
+      const postId = String(id).trim();
+      const url = id === "new" ? "/api/admin/posts" : `/api/admin/posts/${encodeURIComponent(postId)}`;
       const method = id === "new" ? "POST" : "PATCH";
+
+      console.log("Submitting post:", {
+        id: postId,
+        url,
+        method,
+        status: formData.status,
+        title: formData.title.substring(0, 30),
+        hasBody: !!formData.body,
+      });
 
       const res = await fetch(url, {
         method,
@@ -175,16 +213,66 @@ export default function EditPostPage({
         body: JSON.stringify(formData),
       });
 
-      const data = await res.json();
+      console.log("Submit response:", {
+        status: res.status,
+        ok: res.ok,
+        statusText: res.statusText,
+      });
 
       if (!res.ok) {
-        setServerError(data.error || "Failed to save post");
+        // Try to parse error response, handle empty or invalid JSON
+        let errorMessage = `Failed to save post (${res.status})`;
+        try {
+          const errorData = await res.json();
+          // Check if errorData has meaningful content
+          if (errorData && typeof errorData === 'object') {
+            if (errorData.error) {
+              errorMessage = errorData.error;
+            } else if (Object.keys(errorData).length > 0) {
+              // Log the full error object if it has properties
+              console.error("Save post error - full response:", {
+                status: res.status,
+                statusText: res.statusText,
+                data: errorData,
+              });
+              errorMessage = JSON.stringify(errorData);
+            } else {
+              // Empty object - log more details
+              console.error("Save post error - empty response:", {
+                status: res.status,
+                statusText: res.statusText,
+                headers: Object.fromEntries(res.headers.entries()),
+              });
+            }
+          }
+        } catch (jsonError) {
+          // Response is not JSON or is empty
+          try {
+            const text = await res.text();
+            errorMessage = text || errorMessage;
+            console.error("Save post error - non-JSON response:", {
+              status: res.status,
+              statusText: res.statusText,
+              text: text.substring(0, 200), // First 200 chars
+            });
+          } catch (textError) {
+            console.error("Save post error - cannot read response:", {
+              status: res.status,
+              statusText: res.statusText,
+              error: textError,
+            });
+          }
+        }
+        setServerError(errorMessage);
         return;
       }
 
+      const data = await res.json();
       router.push("/admin");
     } catch (error) {
-      setServerError("An unexpected error occurred. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+      setServerError(errorMessage);
+      console.error("Save post exception:", error);
     } finally {
       setIsSaving(false);
     }

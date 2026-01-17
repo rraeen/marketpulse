@@ -38,9 +38,27 @@ export async function POST(request: Request) {
     const extension = file.type.split('/')[1];
     const fileName = `${uuidv4()}.${extension}`;
     
-    // Define upload directory and ensure it exists
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    await mkdir(uploadsDir, { recursive: true });
+    // Define upload directory - handle both development and production (Docker/standalone)
+    // In Next.js standalone mode, public folder is copied to root
+    // In development, it's in process.cwd()/public
+    let uploadsDir: string;
+    try {
+      // Try standard location first
+      uploadsDir = join(process.cwd(), 'public', 'uploads');
+      await mkdir(uploadsDir, { recursive: true });
+    } catch (error) {
+      // Fallback: try root-level public/uploads (for standalone mode)
+      try {
+        uploadsDir = join(process.cwd(), 'uploads');
+        await mkdir(uploadsDir, { recursive: true });
+      } catch (fallbackError) {
+        console.error('Failed to create uploads directory:', error, fallbackError);
+        return NextResponse.json(
+          { error: 'Failed to create upload directory. Check file system permissions.' },
+          { status: 500 }
+        );
+      }
+    }
     
     // Construct file path and validate it's within the uploads directory
     const filePath = join(uploadsDir, fileName);
@@ -55,10 +73,21 @@ export async function POST(request: Request) {
       );
     }
 
-    await writeFile(filePath, buffer);
-    const url = `/uploads/${fileName}`;
-
-    return NextResponse.json({ url });
+    try {
+      await writeFile(filePath, buffer);
+      // Use relative URL that works in both dev and production
+      const url = uploadsDir.includes('public') 
+        ? `/uploads/${fileName}` 
+        : `/uploads/${fileName}`;
+      
+      return NextResponse.json({ url });
+    } catch (writeError) {
+      console.error('Failed to write file:', writeError);
+      return NextResponse.json(
+        { error: 'Failed to save file. Check file system permissions.' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

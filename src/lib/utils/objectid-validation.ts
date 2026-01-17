@@ -5,8 +5,27 @@ import { ObjectId } from 'mongodb';
  */
 export function isValidObjectId(id: string): boolean {
   try {
-    return ObjectId.isValid(id) && new ObjectId(id).toString() === id;
-  } catch {
+    if (!id || typeof id !== 'string') {
+      return false;
+    }
+    const trimmed = id.trim();
+    
+    // Check if it's a valid ObjectId format (24 hex characters)
+    if (!ObjectId.isValid(trimmed)) {
+      return false;
+    }
+    
+    // Try to create ObjectId to verify it can be instantiated
+    // This catches any edge cases where isValid() might return true but
+    // the string can't actually be converted to ObjectId
+    try {
+      new ObjectId(trimmed);
+      return true;
+    } catch {
+      return false;
+    }
+  } catch (error) {
+    console.error("isValidObjectId error:", error, "ID:", id);
     return false;
   }
 }

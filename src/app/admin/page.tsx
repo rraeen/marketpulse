@@ -35,10 +35,17 @@ export default function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         // Backend returns array directly when no pagination is used
-        setPosts(Array.isArray(data) ? data : (data.posts || []));
+        const postsArray = Array.isArray(data) ? data : (data.posts || []);
+        setPosts(postsArray);
+        console.log(`Fetched ${postsArray.length} posts (including drafts)`);
+      } else {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to fetch posts' }));
+        console.error("Error fetching posts:", errorData);
+        alert(`Failed to load posts: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error("Error fetching posts:", error);
+      alert("Failed to load posts. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
@@ -53,18 +60,46 @@ export default function AdminDashboard() {
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm("Are you sure you want to delete this post?")) return;
 
+    const postId = String(id).trim();
+    console.log("Deleting post - ID:", postId, "Type:", typeof postId);
+
     try {
-      const res = await fetch(`/api/admin/posts/${id}`, {
+      const res = await fetch(`/api/admin/posts/${encodeURIComponent(postId)}`, {
         method: "DELETE",
+      });
+
+      console.log("Delete response:", {
+        status: res.status,
+        ok: res.ok,
+        statusText: res.statusText,
       });
 
       if (res.ok) {
         setPosts((prevPosts) => prevPosts.filter((p) => p._id !== id));
+        console.log("Post deleted successfully");
       } else {
-        alert("Failed to delete post");
+        let errorMessage = `Failed to delete post (${res.status})`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error("Delete post error:", {
+            status: res.status,
+            errorData,
+          });
+        } catch (jsonError) {
+          const text = await res.text().catch(() => '');
+          errorMessage = text || errorMessage;
+          console.error("Delete post error - non-JSON response:", {
+            status: res.status,
+            text: text.substring(0, 200),
+          });
+        }
+        alert(errorMessage);
       }
     } catch (error) {
-      alert("Error deleting post");
+      console.error("Error deleting post:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      alert(`Error deleting post: ${errorMessage}`);
     }
   }, []);
 
