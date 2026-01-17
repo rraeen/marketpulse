@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getPostById } from '@/lib/services/post';
+import { getCategoryById } from '@/lib/services/category';
 import { isValidObjectId } from '@/lib/utils/objectid-validation';
 
 export async function GET(
@@ -18,7 +19,35 @@ export async function GET(
     if (!post || post.status !== 'Published') {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
-    return NextResponse.json(post);
+
+    // Populate category information
+    const category = await getCategoryById(post.categoryId.toString());
+    
+    let categoryInfo: any = null;
+    if (category) {
+      categoryInfo = {
+        _id: category._id,
+        name: category.name,
+        slug: category.slug,
+      };
+
+      // If subcategory, include parent
+      if (category.parentId) {
+        const parent = await getCategoryById(category.parentId.toString());
+        if (parent) {
+          categoryInfo.parent = {
+            _id: parent._id,
+            name: parent.name,
+            slug: parent.slug,
+          };
+        }
+      }
+    }
+
+    return NextResponse.json({
+      ...post,
+      category: categoryInfo,
+    });
   } catch (error) {
     console.error('Get post error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getPosts, isValidCategory } from '@/lib/services/post';
+import { getPostsByCategory, getPosts } from '@/lib/services/post';
+import { getCategoryBySlug } from '@/lib/services/category';
 import type { Filter } from 'mongodb';
 import type { Post } from '@/lib/models/post';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const categoryId = searchParams.get('categoryId');
+  const categorySlug = searchParams.get('categorySlug');
+  const subcategorySlug = searchParams.get('subcategorySlug');
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '10');
 
@@ -18,19 +20,81 @@ export async function GET(request: Request) {
       );
     }
 
-    const filter: Filter<Post> = { status: 'Published' as const };
-    
-    // Validate category if provided
-    if (categoryId) {
-      if (!isValidCategory(categoryId)) {
+    // If categorySlug provided, filter by category/subcategory
+    if (categorySlug) {
+      const category = await getCategoryBySlug(categorySlug);
+      if (!category) {
         return NextResponse.json(
-          { error: 'Invalid category' },
-          { status: 400 }
+          { error: 'Category not found' },
+          { status: 404 }
         );
       }
-      filter.categoryId = categoryId;
+
+      // If subcategorySlug provided, get specific subcategory
+      if (subcategorySlug) {
+        const subcategory = await getCategoryBySlug(subcategorySlug);
+        if (!subcategory) {
+          return NextResponse.json(
+            { error: 'Subcategory not found' },
+            { status: 404 }
+          );
+        }
+
+        // Validate subcategory belongs to parent
+        if (subcategory.parentId?.toString() !== category._id?.toString()) {
+          return NextResponse.json(
+            { error: 'Subcategory does not belong to specified category' },
+            { status: 400 }
+          );
+        }
+
+        // Get posts only from subcategory
+        const { posts, total } = await getPostsByCategory(
+          subcategory._id!,
+          false,
+          { page, limit }
+        );
+
+        return NextResponse.json({
+          posts,
+          category: {
+            _id: category._id,
+            name: category.name,
+            slug: category.slug,
+          },
+          subcategory: {
+            _id: subcategory._id,
+            name: subcategory.name,
+            slug: subcategory.slug,
+          },
+          total,
+          page,
+          totalPages: Math.ceil(total / limit),
+        });
+      }
+
+      // Get posts from category + all subcategories
+      const { posts, total } = await getPostsByCategory(
+        category._id!,
+        true,
+        { page, limit }
+      );
+
+      return NextResponse.json({
+        posts,
+        category: {
+          _id: category._id,
+          name: category.name,
+          slug: category.slug,
+        },
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      });
     }
 
+    // No category filter - return all published posts
+    const filter: Filter<Post> = { status: 'Published' as const };
     const result = await getPosts(filter, { page, limit });
     return NextResponse.json(result);
   } catch (error) {

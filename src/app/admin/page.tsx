@@ -124,21 +124,26 @@ export default function AdminDashboard() {
           transition={{ duration: 0.5 }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
-                Content Management
-              </h1>
-              <p className="text-muted-foreground">
-                Manage your posts and content
-              </p>
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-2">
+              Content Management
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              Manage your posts and content
+            </p>
+            <div className="flex items-center gap-4">
+              <Link href="/admin/posts/new">
+                <Button size="lg">
+                  <Plus className="h-4 w-4" />
+                  New Post
+                </Button>
+              </Link>
+              <Link href="/admin/categories">
+                <Button size="lg" variant="outline">
+                  Manage Categories
+                </Button>
+              </Link>
             </div>
-            <Link href="/admin/posts/new">
-              <Button size="lg">
-                <Plus className="h-4 w-4" />
-                New Post
-              </Button>
-            </Link>
           </div>
 
           {/* Posts List */}

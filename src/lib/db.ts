@@ -47,10 +47,20 @@ export async function getDb() {
 
   // Create indexes (once per server start)
   if (!indexesEnsured) {
+    // User indexes
     await db.collection("users").createIndex({ email: 1 }, { unique: true });
+    
+    // Post indexes
     await db.collection("posts").createIndex({ title: "text", body: "text" });
     await db.collection("posts").createIndex({ status: 1 });
     await db.collection("posts").createIndex({ categoryId: 1 });
+    
+    // Category indexes
+    await db.collection("categories").createIndex({ slug: 1 }, { unique: true });
+    await db.collection("categories").createIndex({ parentId: 1 });
+    await db.collection("categories").createIndex({ order: 1 });
+    await db.collection("categories").createIndex({ isActive: 1 });
+    
     indexesEnsured = true;
   }
 

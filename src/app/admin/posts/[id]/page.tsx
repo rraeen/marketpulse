@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { CategorySelector } from "@/components/admin/category-selector";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { CATEGORIES } from "@/lib/constants/categories";
 import { Loader2, Upload, X } from "lucide-react";
 import { use } from "react";
 
@@ -33,7 +33,7 @@ export default function EditPostPage({
   const [formData, setFormData] = useState<PostFormData>({
     title: "",
     body: "",
-    categoryId: CATEGORIES[0],
+    categoryId: "",
     status: "Draft",
     featuredImageUrl: "",
   });
@@ -340,20 +340,12 @@ export default function EditPostPage({
               <label htmlFor="categoryId" className="block text-sm font-medium mb-1.5">
                 Category *
               </label>
-              <Select
-                id="categoryId"
-                name="categoryId"
+              <CategorySelector
                 value={formData.categoryId}
-                onChange={handleChange}
+                onChange={(value) => setFormData((prev) => ({ ...prev, categoryId: value }))}
                 error={errors.categoryId}
                 disabled={isSaving}
-              >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </Select>
+              />
             </div>
 
             {/* Featured Image */}

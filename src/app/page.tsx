@@ -1,17 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, TrendingUp } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { CATEGORIES } from "@/lib/constants/categories";
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "");
-}
+import { CategoryTree } from "@/lib/types/category";
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -37,10 +31,28 @@ const itemVariants: Variants = {
 };
 
 export default function Home() {
+  const [categories, setCategories] = useState<CategoryTree[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const mainCategories = categories.filter((c) => !c.parentId).sort((a, b) => a.order - b.order);
+  const firstCategory = mainCategories[0];
+
   return (
     <div className="flex-1">
-    
-
       {/* Hero Section */}
       <section className="relative py-24 md:py-32 lg:py-40 overflow-hidden">
         <Container>
@@ -64,7 +76,7 @@ export default function Home() {
               variants={itemVariants}
               className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6 leading-tight"
             >
-              Professional Market Pulse
+              Professional Market
               <br />
               <span className="text-muted-foreground">Insights & Guidance</span>
             </motion.h1>
@@ -82,13 +94,15 @@ export default function Home() {
               variants={itemVariants}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <Link
-                href="/category/micro-economics"
-                className="group inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background rounded-md font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Explore Insights
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
+              {firstCategory && (
+                <Link
+                  href={`/category/${firstCategory.slug}`}
+                  className="group inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background rounded-md font-medium transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Explore Insights
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Link>
+              )}
               <Link
                 href="#categories"
                 className="inline-flex items-center px-8 py-4 border border-border rounded-md font-medium transition-all hover:bg-accent hover:border-foreground/20"
@@ -121,9 +135,9 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {CATEGORIES.map((category, index) => (
+              {mainCategories.map((category, index) => (
                 <motion.div
-                  key={category}
+                  key={category._id}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -134,14 +148,16 @@ export default function Home() {
                   }}
                 >
                   <Link
-                    href={`/category/${slugify(category)}`}
+                    href={`/category/${category.slug}`}
                     className="group block p-6 bg-background border border-border rounded-md transition-all hover:border-foreground/30 hover:shadow-lg hover:-translate-y-1"
                   >
                     <h3 className="text-lg font-semibold mb-2 group-hover:text-foreground transition-colors">
-                      {category}
+                      {category.name}
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Expert insights and analysis
+                      {category.subcategories && category.subcategories.length > 0
+                        ? `${category.subcategories.length} subcategories`
+                        : "Expert insights and analysis"}
                     </p>
                     <div className="flex items-center text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                       Explore

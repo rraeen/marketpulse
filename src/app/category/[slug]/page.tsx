@@ -1,39 +1,27 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
-import { PostCard } from "@/components/ui/post-card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { CATEGORIES } from "@/lib/constants/categories";
+import { CategoryPostsList } from "@/components/category/category-posts-list";
+import { ChevronRight } from "lucide-react";
+import { Category } from "@/lib/types/category";
 
-function slugify(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]+/g, "");
-}
-
-function unslugify(slug: string): string {
-  return CATEGORIES.find((cat) => slugify(cat) === slug) || "";
-}
-
-async function getPosts(categoryId: string) {
+async function getCategoryPosts(categorySlug: string) {
   try {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/posts?categoryId=${categoryId}&limit=50`, {
-      cache: "no-store",
-    });
+    const res = await fetch(
+      `${baseUrl}/api/posts?categorySlug=${categorySlug}&page=1&limit=3`,
+      { cache: "no-store" }
+    );
 
     if (!res.ok) {
-      return { posts: [], total: 0, page: 1, limit: 50 };
+      return null;
     }
 
     return await res.json();
   } catch (error) {
-    console.error("Error fetching posts:", error);
-    return { posts: [], total: 0, page: 1, limit: 50 };
+    console.error("Error fetching category posts:", error);
+    return null;
   }
-}
-
-export async function generateStaticParams() {
-  return CATEGORIES.map((category) => ({
-    slug: slugify(category),
-  }));
 }
 
 export async function generateMetadata({
@@ -42,17 +30,17 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const category = unslugify(slug);
+  const data = await getCategoryPosts(slug);
 
-  if (!category) {
+  if (!data || !data.category) {
     return {
       title: "Category Not Found",
     };
   }
 
   return {
-    title: `${category} | MarketPulse`,
-    description: `Browse ${category} insights and analysis from MarketPulse.`,
+    title: `${data.category.name} | MarketPulse`,
+    description: `Browse ${data.category.name} insights and analysis from MarketPulse.`,
   };
 }
 
@@ -62,49 +50,67 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const category = unslugify(slug);
+  const data = await getCategoryPosts(slug);
 
-  if (!category) {
+  if (!data || !data.category) {
     notFound();
   }
 
-  const { posts } = await getPosts(category);
+  const { posts, total, category } = data;
+  const subcategories: Category[] = category.subcategories || [];
 
   return (
     <div className="flex-1 py-12 md:py-16">
       <Container>
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+          <Link href="/" className="hover:text-foreground transition-colors">
+            Home
+          </Link>
+          <ChevronRight className="h-4 w-4" />
+          <span className="text-foreground">{category.name}</span>
+        </nav>
+
         {/* Header */}
-        <div className="mb-12">
+        <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
-            {category}
+            {category.name}
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Expert insights and analysis in {category.toLowerCase()}
+          <p className="text-muted-foreground text-lg mb-6">
+            Expert insights and analysis in {category.name.toLowerCase()}
           </p>
+
+          {/* Subcategory Filters */}
+          {subcategories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filter by:</span>
+              <Link
+                href={`/category/${slug}`}
+                className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-md hover:opacity-90 transition-all"
+              >
+                All
+              </Link>
+              {subcategories.map((sub: Category) => (
+                <Link
+                  key={sub._id}
+                  href={`/category/${slug}/${sub.slug}`}
+                  className="px-4 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-md hover:bg-foreground/10 transition-all"
+                >
+                  {sub.name}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Posts Grid */}
-        {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {posts.map((post: any, index: number) => (
-              <PostCard
-                key={post._id}
-                id={post._id}
-                title={post.title}
-                body={post.body}
-                featuredImageUrl={post.featuredImageUrl}
-                categoryId={post.categoryId}
-                publishedAt={post.updatedAt}
-                index={index}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No posts yet"
-            description={`There are no published posts in ${category} yet. Check back soon for expert insights!`}
+        {/* Posts List with Infinite Scroll */}
+        <div className="max-w-4xl mx-auto">
+          <CategoryPostsList
+            categorySlug={category.slug}
+            initialPosts={posts}
+            initialTotal={total}
           />
-        )}
+        </div>
       </Container>
     </div>
   );

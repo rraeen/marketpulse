@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import {
   deletePost,
   getPostById,
-  isValidCategory,
   isValidStatus,
   updatePost,
 } from "@/lib/services/post";
 import { isValidObjectId } from "@/lib/utils/objectid-validation";
 import { serializePost } from "@/lib/utils/serialize";
+import { ObjectId } from 'mongodb';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -108,8 +108,13 @@ export async function PATCH(
       categoryId: data.categoryId 
     });
 
-    if (data.categoryId && !isValidCategory(data.categoryId)) {
-      return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    // Validate categoryId if provided
+    if (data.categoryId) {
+      if (!isValidObjectId(data.categoryId)) {
+        return NextResponse.json({ error: "Invalid category ID format" }, { status: 400 });
+      }
+      // Convert to ObjectId
+      data.categoryId = new ObjectId(data.categoryId);
     }
 
     if (data.status && !isValidStatus(data.status)) {

@@ -1,12 +1,91 @@
 import { getDb } from '../db';
 import { Post } from '../models/post';
-import { ObjectId, type ModifyResult, type Filter } from 'mongodb';
-import { Category, CATEGORIES } from '../constants/categories';
+import { ObjectId, type Filter } from 'mongodb';
 import { notifyUsersOfNewPost } from './notification';
+import { getCategoryById, getCategoryBySlug } from './category';
+
+/**
+ * Validate that a category exists and is active
+ */
+export async function validateCategory(categoryId: ObjectId): Promise<boolean> {
+  try {
+    const category = await getCategoryById(categoryId.toString());
+    if (!category) {
+      console.error(`Category not found: ${categoryId.toString()}`);
+      return false;
+    }
+    if (!category.isActive) {
+      console.error(`Category is inactive: ${categoryId.toString()}, name: ${category.name}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error(`Error validating category ${categoryId.toString()}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Get all subcategory IDs for a parent category
+ */
+export async function getSubcategoryIds(categoryId: ObjectId): Promise<ObjectId[]> {
+  const db = await getDb();
+  const categoriesCollection = db.collection('categories');
+
+  const subcategories = await categoriesCollection
+    .find({ parentId: categoryId, isActive: true })
+    .project({ _id: 1 })
+    .toArray();
+
+  return subcategories.map((sub) => sub._id);
+}
+
+/**
+ * Get posts by category (with or without subcategories)
+ */
+export async function getPostsByCategory(
+  categoryId: ObjectId,
+  includeSubcategories: boolean,
+  pagination: { page: number; limit: number }
+): Promise<{ posts: Post[]; total: number }> {
+  const db = await getDb();
+  const postsCollection = db.collection<Post>('posts');
+
+  let categoryIds = [categoryId];
+  if (includeSubcategories) {
+    const subcategoryIds = await getSubcategoryIds(categoryId);
+    categoryIds = [...categoryIds, ...subcategoryIds];
+  }
+
+  const filter: Filter<Post> = {
+    categoryId: { $in: categoryIds },
+    status: 'Published',
+  };
+
+  const skip = (pagination.page - 1) * pagination.limit;
+
+  const [posts, total] = await Promise.all([
+    postsCollection
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pagination.limit)
+      .toArray(),
+    postsCollection.countDocuments(filter),
+  ]);
+
+  return { posts, total };
+}
 
 export async function createPost(data: Omit<Post, '_id' | 'createdAt' | 'updatedAt'>) {
   const db = await getDb();
   const postsCollection = db.collection<Post>('posts');
+
+  // Validate category exists and is active
+  const isValid = await validateCategory(data.categoryId);
+  if (!isValid) {
+    throw new Error('Invalid or inactive category');
+  }
 
   const newPost: Post = {
     ...data,
@@ -26,6 +105,14 @@ export async function createPost(data: Omit<Post, '_id' | 'createdAt' | 'updated
 export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'createdAt' | 'updatedAt'>>) {
   const db = await getDb();
   const postsCollection = db.collection<Post>('posts');
+
+  // Validate category if being updated
+  if (data.categoryId) {
+    const isValid = await validateCategory(data.categoryId);
+    if (!isValid) {
+      throw new Error('Invalid or inactive category');
+    }
+  }
 
   const trimmedId = id.trim();
   console.log("updatePost - ID:", trimmedId, "Data keys:", Object.keys(data), "Status:", data.status);
@@ -194,10 +281,6 @@ export async function searchPosts(query: string, page: number = 1, limit: number
   ]);
 
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
-}
-
-export function isValidCategory(category: unknown): category is Category {
-  return CATEGORIES.includes(category as Category);
 }
 
 export function isValidStatus(status: unknown): status is Post['status'] {

@@ -1,5 +1,4 @@
 import { Db } from "mongodb";
-import { CATEGORIES } from "../constants/categories";
 
 export async function ensureCollectionSchemas(db: Db) {
   // Users Collection Schema
@@ -71,8 +70,8 @@ export async function ensureCollectionSchemas(db: Db) {
           description: "Featured image URL must be a string if provided",
         },
         categoryId: {
-          enum: CATEGORIES,
-          description: `Category must be one of: ${CATEGORIES.join(", ")}`,
+          bsonType: "objectId",
+          description: "Category ID is required and must be an ObjectId reference",
         },
         status: {
           enum: ["Draft", "Published"],
@@ -89,6 +88,48 @@ export async function ensureCollectionSchemas(db: Db) {
         updatedAt: {
           bsonType: "date",
           description: "updatedAt must be a date",
+        },
+      },
+    },
+  };
+
+  // Categories Collection Schema
+  const categoriesSchema = {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["name", "slug", "order", "isActive", "createdAt", "updatedAt"],
+      properties: {
+        name: {
+          bsonType: "string",
+          minLength: 1,
+          maxLength: 100,
+          description: "Category name is required (1-100 characters)",
+        },
+        slug: {
+          bsonType: "string",
+          pattern: "^[a-z0-9-]+$",
+          description: "Slug must be lowercase alphanumeric with hyphens only",
+        },
+        parentId: {
+          bsonType: ["objectId", "null"],
+          description: "Parent category ID (null for main categories)",
+        },
+        order: {
+          bsonType: "int",
+          minimum: 0,
+          description: "Order must be a non-negative integer",
+        },
+        isActive: {
+          bsonType: "bool",
+          description: "Active status flag",
+        },
+        createdAt: {
+          bsonType: "date",
+          description: "Creation timestamp",
+        },
+        updatedAt: {
+          bsonType: "date",
+          description: "Last update timestamp",
         },
       },
     },
@@ -160,6 +201,24 @@ export async function ensureCollectionSchemas(db: Db) {
         if (err.codeName === "NamespaceNotFound") {
           await db.createCollection("posts", {
             validator: postsSchema,
+            validationLevel: "strict",
+            validationAction: "error",
+          });
+        }
+      });
+
+    // Apply schema validation to categories collection
+    await db
+      .command({
+        collMod: "categories",
+        validator: categoriesSchema,
+        validationLevel: "strict",
+        validationAction: "error",
+      })
+      .catch(async (err) => {
+        if (err.codeName === "NamespaceNotFound") {
+          await db.createCollection("categories", {
+            validator: categoriesSchema,
             validationLevel: "strict",
             validationAction: "error",
           });

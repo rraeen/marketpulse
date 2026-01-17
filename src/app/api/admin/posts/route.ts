@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-helper';
-import { createPost, getPosts, isValidCategory, isValidStatus } from '@/lib/services/post';
+import { createPost, getPosts, isValidStatus } from '@/lib/services/post';
 import { serializePost, serializePosts } from '@/lib/utils/serialize';
 import { ObjectId } from 'mongodb';
+import { isValidObjectId } from '@/lib/utils/objectid-validation';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -41,9 +42,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isValidCategory(categoryId)) {
+    // Validate categoryId format
+    if (!isValidObjectId(categoryId)) {
       return NextResponse.json(
-        { error: 'Invalid category' },
+        { error: 'Invalid category ID format' },
         { status: 400 }
       );
     }
@@ -55,11 +57,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // Convert categoryId to ObjectId
+    let categoryObjectId: ObjectId;
+    try {
+      categoryObjectId = new ObjectId(categoryId);
+    } catch (error) {
+      console.error('Invalid categoryId format:', categoryId);
+      return NextResponse.json(
+        { error: 'Invalid category ID format' },
+        { status: 400 }
+      );
+    }
+
+    // Log for debugging
+    console.log('Creating post with categoryId:', categoryObjectId.toString());
+
     const post = await createPost({
       title,
       body,
       featuredImageUrl,
-      categoryId,
+      categoryId: categoryObjectId,
       status,
       adminId: typeof user._id === 'string' ? new ObjectId(user._id) : user._id,
     });
@@ -79,6 +96,14 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Admin create post error:', error);
+    const err = error as Error;
+    
+    if (err.message.includes('Invalid or inactive category')) {
+      return NextResponse.json({ 
+        error: `Category validation failed. Please ensure the category exists and is active. CategoryId: ${categoryId}` 
+      }, { status: 400 });
+    }
+    
     const errorMessage = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
