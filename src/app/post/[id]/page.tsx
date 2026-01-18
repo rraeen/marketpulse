@@ -6,7 +6,10 @@ import DOMPurify from "isomorphic-dompurify";
 
 async function getPost(id: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Use Vercel URL or localhost for development
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const res = await fetch(`${baseUrl}/api/posts/${id}`, {
       cache: "no-store",
     });
