@@ -5,33 +5,70 @@ import { CategoryPostsList } from "@/components/category/category-posts-list";
 import { TrendingSidebar } from "@/components/trending/trending-sidebar";
 import { ChevronRight } from "lucide-react";
 import { Category } from "@/lib/types/category";
-import { headers } from "next/headers";
+import { getPostsByCategory } from "@/lib/services/post";
+import { getCategoryBySlug } from "@/lib/services/category";
+import { getDb } from "@/lib/db";
+import type { Category as DbCategory } from "@/lib/models/category";
+import type { Post as DbPost } from "@/lib/models/post";
 
-async function getBaseUrl() {
-  const hdrs = await headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const protocol = hdrs.get("x-forwarded-proto") ?? "https";
-
-  if (host) {
-    return `${protocol}://${host}`;
-  }
-
-  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-}
+export const dynamic = "force-dynamic";
 
 async function getCategoryPosts(categorySlug: string) {
   try {
-    const baseUrl = await getBaseUrl();
-    const res = await fetch(
-      `${baseUrl}/api/posts?categorySlug=${categorySlug}&page=1&limit=3`,
-      { cache: "no-store" }
-    );
-
-    if (!res.ok) {
+    const categoryDb = await getCategoryBySlug(categorySlug);
+    if (!categoryDb) {
       return null;
     }
 
-    return await res.json();
+    const { posts, total } = await getPostsByCategory(categoryDb._id!, true, {
+      page: 1,
+      limit: 3,
+    });
+
+    const db = await getDb();
+    const subcategoriesDb = await db
+      .collection<DbCategory>("categories")
+      .find({ parentId: categoryDb._id, isActive: true })
+      .sort({ name: 1 })
+      .toArray();
+
+    const category: Category = {
+      _id: categoryDb._id?.toString() || "",
+      name: categoryDb.name,
+      slug: categoryDb.slug,
+      parentId: categoryDb.parentId ? categoryDb.parentId.toString() : null,
+      order: categoryDb.order,
+      isActive: categoryDb.isActive,
+      createdAt: categoryDb.createdAt.toISOString(),
+      updatedAt: categoryDb.updatedAt.toISOString(),
+    };
+
+    const subcategories: Category[] = subcategoriesDb.map((sub) => ({
+      _id: sub._id?.toString() || "",
+      name: sub.name,
+      slug: sub.slug,
+      parentId: sub.parentId ? sub.parentId.toString() : null,
+      order: sub.order,
+      isActive: sub.isActive,
+      createdAt: sub.createdAt.toISOString(),
+      updatedAt: sub.updatedAt.toISOString(),
+    }));
+
+    const postsUi = posts.map((post: DbPost) => ({
+      _id: post._id?.toString() || "",
+      title: post.title,
+      body: post.body,
+      featuredImageUrl: post.featuredImageUrl,
+      categoryId: post.categoryId.toString(),
+      updatedAt: post.updatedAt.toISOString(),
+    }));
+
+    return {
+      posts: postsUi,
+      total,
+      category,
+      subcategories,
+    };
   } catch (error) {
     console.error("Error fetching category posts:", error);
     return null;
@@ -70,8 +107,8 @@ export default async function CategoryPage({
     notFound();
   }
 
-  const { posts, total, category } = data;
-  const subcategories: Category[] = category.subcategories || [];
+  const { posts, total, category, subcategories } = data;
+  const subcategoriesList: Category[] = subcategories || [];
 
   return (
     <div className="flex-1 py-12 md:py-16">
@@ -95,7 +132,7 @@ export default async function CategoryPage({
           </p>
 
           {/* Subcategory Filters */}
-          {subcategories.length > 0 && (
+          {subcategoriesList.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">Filter by:</span>
               <Link
@@ -104,7 +141,7 @@ export default async function CategoryPage({
               >
                 All
               </Link>
-              {subcategories.map((sub: Category) => (
+              {subcategoriesList.map((sub: Category) => (
                 <Link
                   key={sub._id}
                   href={`/category/${slug}/${sub.slug}`}

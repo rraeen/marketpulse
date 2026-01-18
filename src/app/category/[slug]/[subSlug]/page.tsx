@@ -4,33 +4,71 @@ import { Container } from "@/components/ui/container";
 import { CategoryPostsList } from "@/components/category/category-posts-list";
 import { TrendingSidebar } from "@/components/trending/trending-sidebar";
 import { ChevronRight } from "lucide-react";
-import { headers } from "next/headers";
+import { getPostsByCategory } from "@/lib/services/post";
+import { getCategoryBySlug } from "@/lib/services/category";
+import type { Category as UiCategory } from "@/lib/types/category";
+import type { Post as DbPost } from "@/lib/models/post";
 
-async function getBaseUrl() {
-  const hdrs = await headers();
-  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
-  const protocol = hdrs.get("x-forwarded-proto") ?? "https";
-
-  if (host) {
-    return `${protocol}://${host}`;
-  }
-
-  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-}
+export const dynamic = "force-dynamic";
 
 async function getSubcategoryPosts(categorySlug: string, subSlug: string) {
   try {
-    const baseUrl = await getBaseUrl();
-    const res = await fetch(
-      `${baseUrl}/api/posts?categorySlug=${categorySlug}&subcategorySlug=${subSlug}&page=1&limit=3`,
-      { cache: "no-store" }
-    );
-
-    if (!res.ok) {
+    const categoryDb = await getCategoryBySlug(categorySlug);
+    if (!categoryDb) {
       return null;
     }
 
-    return await res.json();
+    const subcategoryDb = await getCategoryBySlug(subSlug);
+    if (!subcategoryDb) {
+      return null;
+    }
+
+    if (subcategoryDb.parentId?.toString() !== categoryDb._id?.toString()) {
+      return null;
+    }
+
+    const { posts, total } = await getPostsByCategory(subcategoryDb._id!, false, {
+      page: 1,
+      limit: 3,
+    });
+
+    const category: UiCategory = {
+      _id: categoryDb._id?.toString() || "",
+      name: categoryDb.name,
+      slug: categoryDb.slug,
+      parentId: categoryDb.parentId ? categoryDb.parentId.toString() : null,
+      order: categoryDb.order,
+      isActive: categoryDb.isActive,
+      createdAt: categoryDb.createdAt.toISOString(),
+      updatedAt: categoryDb.updatedAt.toISOString(),
+    };
+
+    const subcategory: UiCategory = {
+      _id: subcategoryDb._id?.toString() || "",
+      name: subcategoryDb.name,
+      slug: subcategoryDb.slug,
+      parentId: subcategoryDb.parentId ? subcategoryDb.parentId.toString() : null,
+      order: subcategoryDb.order,
+      isActive: subcategoryDb.isActive,
+      createdAt: subcategoryDb.createdAt.toISOString(),
+      updatedAt: subcategoryDb.updatedAt.toISOString(),
+    };
+
+    const postsUi = posts.map((post: DbPost) => ({
+      _id: post._id?.toString() || "",
+      title: post.title,
+      body: post.body,
+      featuredImageUrl: post.featuredImageUrl,
+      categoryId: post.categoryId.toString(),
+      updatedAt: post.updatedAt.toISOString(),
+    }));
+
+    return {
+      posts: postsUi,
+      total,
+      category,
+      subcategory,
+    };
   } catch (error) {
     console.error("Error fetching subcategory posts:", error);
     return null;
