@@ -7,7 +7,11 @@ import { ChevronRight } from "lucide-react";
 
 async function getSubcategoryPosts(categorySlug: string, subSlug: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Use Vercel URL or localhost for development
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    
     const res = await fetch(
       `${baseUrl}/api/posts?categorySlug=${categorySlug}&subcategorySlug=${subSlug}&page=1&limit=3`,
       { cache: "no-store" }

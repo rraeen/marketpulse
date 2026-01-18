@@ -6,12 +6,13 @@ import { TrendingSidebar } from "@/components/trending/trending-sidebar";
 import { ChevronRight } from "lucide-react";
 import { Category } from "@/lib/types/category";
 
-// Force dynamic rendering since content changes frequently
-export const dynamic = 'force-dynamic';
-
 async function getCategoryPosts(categorySlug: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    // Use Vercel URL or localhost for development
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    
     const res = await fetch(
       `${baseUrl}/api/posts?categorySlug=${categorySlug}&page=1&limit=3`,
       { cache: "no-store" }
