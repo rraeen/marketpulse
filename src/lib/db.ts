@@ -65,6 +65,12 @@ export async function getDb() {
     await db.collection("categories").createIndex({ isActive: 1 });
     await db.collection("categories").createIndex({ parentId: 1, isActive: 1, order: 1 }); // Tree queries
     
+    // OTP verification indexes
+    await db.collection("otp_verifications").createIndex({ email: 1 });
+    await db.collection("otp_verifications").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+    await db.collection("otp_verifications").createIndex({ email: 1, purpose: 1, isUsed: 1 });
+    await db.collection("otp_verifications").createIndex({ createdAt: 1 });
+    
     indexesEnsured = true;
   }
 

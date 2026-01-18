@@ -19,6 +19,10 @@ const getJwtSecret = () => {
 
 const JWT_SECRET = new TextEncoder().encode(getJwtSecret());
 
+/**
+ * Register user with pending verification status
+ * Sends OTP for email verification
+ */
 export async function registerUser(name: string, email: string, password: string): Promise<User> {
   const db = await getDb();
   const usersCollection = db.collection<User>('users');
@@ -26,11 +30,16 @@ export async function registerUser(name: string, email: string, password: string
   // Check if user already exists
   const existingUser = await usersCollection.findOne({ email });
   if (existingUser) {
-    throw new Error('Email already registered');
+    if (existingUser.emailVerified) {
+      throw new Error('Email already registered');
+    } else {
+      // User exists but not verified - allow re-registration
+      throw new Error('Email already registered. Please verify your email or request a new OTP.');
+    }
   }
 
   // Hash password
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = await bcrypt.hash(password, 12);
 
   const newUser: User = {
     name,
@@ -38,7 +47,10 @@ export async function registerUser(name: string, email: string, password: string
     passwordHash,
     role: 'User',
     isPremiumInterested: false,
+    emailVerified: false,
+    verificationStatus: 'Pending',
     createdAt: new Date(),
+    updatedAt: new Date(),
   };
 
   const result = await usersCollection.insertOne(newUser);
@@ -47,6 +59,9 @@ export async function registerUser(name: string, email: string, password: string
   return newUser;
 }
 
+/**
+ * Login user - requires email verification
+ */
 export async function loginUser(email: string, password: string) {
   const db = await getDb();
   const usersCollection = db.collection<User>('users');
@@ -54,6 +69,11 @@ export async function loginUser(email: string, password: string) {
   const user = await usersCollection.findOne({ email });
   if (!user) {
     throw new Error('Invalid credentials');
+  }
+
+  // Check if email is verified
+  if (!user.emailVerified || user.verificationStatus !== 'Verified') {
+    throw new Error('Email not verified. Please verify your email before logging in.');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
@@ -72,6 +92,56 @@ export async function loginUser(email: string, password: string) {
     .sign(JWT_SECRET);
 
   return { user, token };
+}
+
+/**
+ * Verify user's email with OTP
+ */
+export async function verifyUserEmail(email: string): Promise<void> {
+  const db = await getDb();
+  const usersCollection = db.collection<User>('users');
+
+  await usersCollection.updateOne(
+    { email },
+    {
+      $set: {
+        emailVerified: true,
+        verificationStatus: 'Verified',
+        updatedAt: new Date(),
+      },
+    }
+  );
+}
+
+/**
+ * Reset user password
+ */
+export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
+  const db = await getDb();
+  const usersCollection = db.collection<User>('users');
+
+  const user = await usersCollection.findOne({ email });
+  if (!user) {
+    // Don't reveal if email exists (security)
+    return;
+  }
+
+  // Hash new password
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  // Update password
+  await usersCollection.updateOne(
+    { email },
+    {
+      $set: {
+        passwordHash,
+        updatedAt: new Date(),
+      },
+    }
+  );
+
+  // TODO: Invalidate all active sessions/tokens for this user
+  // This would require a token blacklist or session management system
 }
 
 export async function verifyToken(token: string) {

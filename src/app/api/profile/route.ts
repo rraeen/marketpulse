@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-helper';
 import { getDb } from '@/lib/db';
+import { ObjectId } from 'mongodb';
 
 export async function GET() {
   const user = await getSessionUser();
@@ -28,17 +29,31 @@ export async function PATCH(request: Request) {
     }
 
     const db = await getDb();
+    
+    // Ensure _id is an ObjectId
+    const userId = user._id instanceof ObjectId ? user._id : new ObjectId(user._id);
+    
+    console.log('Updating user preference:', {
+      userId: userId.toString(),
+      isPremiumInterested
+    });
+
     const result = await db.collection('users').findOneAndUpdate(
-      { _id: user._id },
+      { _id: userId },
       { $set: { isPremiumInterested } },
       { returnDocument: 'after', projection: { passwordHash: 0 } }
     );
 
-    if (!result || !result.value) {
+    console.log('Update result:', {
+      found: !!result,
+      value: result ? 'exists' : 'null'
+    });
+
+    if (!result) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const updatedUser = result.value;
+    const updatedUser = result;
 
     return NextResponse.json(updatedUser);
   } catch (error) {

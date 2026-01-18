@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { registerUser } from '@/lib/services/auth';
 import { validatePasswordStrength } from '@/lib/utils/password-validation';
+import { createOTP } from '@/lib/services/otp';
 
 export async function POST(request: Request) {
   try {
@@ -31,7 +32,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Register user (creates user in pending state)
     const user = await registerUser(name, email, password);
+
+    // Send OTP for email verification
+    try {
+      await createOTP(email, 'Registration', user._id);
+    } catch (otpError) {
+      console.error('Failed to send OTP:', otpError);
+      // Continue - user is registered, they can request OTP again via resend
+    }
 
     // Don't return password hash
     const userWithoutPassword = { ...user };
@@ -39,12 +49,15 @@ export async function POST(request: Request) {
     delete userWithoutPassword.passwordHash;
 
     return NextResponse.json(
-      { message: 'User registered successfully', user: userWithoutPassword },
+      { 
+        message: 'Registration successful. Please check your email for the verification OTP.',
+        user: userWithoutPassword 
+      },
       { status: 201 }
     );
   } catch (error: unknown) {
     const err = error as Error;
-    if (err.message === 'Email already registered') {
+    if (err.message.includes('Email already registered')) {
       return NextResponse.json({ error: err.message }, { status: 409 });
     }
     console.error('Registration error:', err);

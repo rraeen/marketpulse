@@ -43,14 +43,23 @@ export default function ProfilePage() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update preference");
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update preference");
       }
 
-      await refreshAuth();
+      // Update was successful - show success message
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
+
+      // Try to refresh auth, but don't fail if it errors
+      try {
+        await refreshAuth();
+      } catch (refreshError) {
+        // Log but don't show error to user since the save was successful
+        console.warn("Failed to refresh auth state:", refreshError);
+      }
     } catch (err) {
-      setError("Failed to save preference. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to save preference. Please try again.");
       // Revert on error
       setIsPremiumInterested(!newValue);
     } finally {
