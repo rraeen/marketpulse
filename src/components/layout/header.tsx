@@ -169,7 +169,7 @@ export function Header() {
                     href={`/category/${category.slug}`}
                     className={cn(
                       "flex items-center gap-1 text-sm font-medium transition-colors hover:text-yellow-400 whitespace-nowrap",
-                      isActive ? "text-foreground" : "text-muted-foreground"
+                      isActive ? "text-yellow-400" : "text-muted-foreground"
                     )}
                   >
                     {category.name}
@@ -188,15 +188,21 @@ export function Header() {
                       onMouseLeave={handleCategoryMouseLeave}
                     >
                       <div className="max-h-[200px] overflow-y-auto">
-                        {category.subcategories!.map((sub) => (
-                          <Link
-                            key={sub._id}
-                            href={`/category/${category.slug}/${sub.slug}`}
-                            className="block px-4 py-2 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
-                          >
-                            {sub.name}
-                          </Link>
-                        ))}
+                        {category.subcategories!.map((sub) => {
+                          const isSubActive = pathname === `/category/${category.slug}/${sub.slug}`;
+                          return (
+                            <Link
+                              key={sub._id}
+                              href={`/category/${category.slug}/${sub.slug}`}
+                              className={cn(
+                                "block px-4 py-2 text-sm hover:text-yellow-400 transition-colors",
+                                isSubActive ? "text-yellow-400" : "text-muted-foreground"
+                              )}
+                            >
+                              {sub.name}
+                            </Link>
+                          );
+                        })}
                       </div>
                       {category.subcategories!.length > 5 && (
                         <div className="text-center py-1 text-xs text-white/70 dark:text-muted-foreground border-t border-white/20 dark:border-border">
@@ -238,26 +244,36 @@ export function Header() {
                   >
                     {remaining.map((category) => {
                       const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+                      const isActive = pathname.startsWith(`/category/${category.slug}`);
 
                       return (
                         <div key={category._id}>
                           <Link
                             href={`/category/${category.slug}`}
-                            className="block px-4 py-2 text-sm font-medium text-muted-foreground hover:text-yellow-400 transition-colors"
+                            className={cn(
+                              "block px-4 py-2 text-sm font-medium hover:text-yellow-400 transition-colors",
+                              isActive ? "text-yellow-400" : "text-muted-foreground"
+                            )}
                           >
                             {category.name}
                           </Link>
                           {hasSubcategories && (
                             <div className="bg-muted/30">
-                              {category.subcategories!.map((sub) => (
-                                <Link
-                                  key={sub._id}
-                                  href={`/category/${category.slug}/${sub.slug}`}
-                                  className="block px-4 py-2 pl-8 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
-                                >
-                                  └─ {sub.name}
-                                </Link>
-                              ))}
+                              {category.subcategories!.map((sub) => {
+                                const isSubActive = pathname === `/category/${category.slug}/${sub.slug}`;
+                                return (
+                                  <Link
+                                    key={sub._id}
+                                    href={`/category/${category.slug}/${sub.slug}`}
+                                    className={cn(
+                                      "block px-4 py-2 pl-8 text-sm hover:text-yellow-400 transition-colors",
+                                      isSubActive ? "text-yellow-400" : "text-muted-foreground"
+                                    )}
+                                  >
+                                    └─ {sub.name}
+                                  </Link>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -278,8 +294,8 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* Theme Toggle */}
-            <ThemeToggle />
+            {/* Theme Toggle - Admin Only */}
+            {user?.role === "Admin" && <ThemeToggle />}
             
             {/* Auth Buttons - Desktop */}
             <div className="hidden md:flex items-center gap-2">
@@ -411,6 +427,7 @@ export function Header() {
                 {mainCategories.map((category, index) => {
                   const isExpanded = expandedCategories.has(category._id);
                   const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+                  const isActive = pathname.startsWith(`/category/${category.slug}`);
 
                   return (
                     <div key={category._id}>
@@ -436,7 +453,10 @@ export function Header() {
                           <Link
                             href={`/category/${category.slug}`}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex-1 py-2 text-base font-medium text-white dark:text-foreground hover:text-yellow-400 dark:hover:text-yellow-400 transition-colors"
+                            className={cn(
+                              "flex-1 py-2 text-base font-medium hover:text-yellow-400 dark:hover:text-yellow-400 transition-colors",
+                              isActive ? "text-yellow-400 dark:text-yellow-400" : "text-white dark:text-foreground"
+                            )}
                           >
                             {category.name}
                           </Link>
@@ -446,16 +466,22 @@ export function Header() {
                       {/* Mobile Subcategories */}
                       {isExpanded && hasSubcategories && (
                         <div className="ml-6 mt-1 space-y-1">
-                          {category.subcategories!.map((sub) => (
-                            <Link
-                              key={sub._id}
-                              href={`/category/${category.slug}/${sub.slug}`}
-                              onClick={() => setIsMobileMenuOpen(false)}
-                              className="block py-2 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
-                            >
-                              └─ {sub.name}
-                            </Link>
-                          ))}
+                          {category.subcategories!.map((sub) => {
+                            const isSubActive = pathname === `/category/${category.slug}/${sub.slug}`;
+                            return (
+                              <Link
+                                key={sub._id}
+                                href={`/category/${category.slug}/${sub.slug}`}
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={cn(
+                                  "block py-2 text-sm hover:text-yellow-400 transition-colors",
+                                  isSubActive ? "text-yellow-400" : "text-muted-foreground"
+                                )}
+                              >
+                                └─ {sub.name}
+                              </Link>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -464,11 +490,13 @@ export function Header() {
 
                 {/* Mobile Auth Actions */}
                 <div className="border-t border-border pt-4 mt-2 space-y-2">
-                  {/* Theme Toggle - Mobile */}
-                  <div className="flex items-center justify-between px-2 py-2">
-                    <span className="text-sm font-medium">Theme</span>
-                    <ThemeToggle />
-                  </div>
+                  {/* Theme Toggle - Mobile - Admin Only */}
+                  {user?.role === "Admin" && (
+                    <div className="flex items-center justify-between px-2 py-2">
+                      <span className="text-sm font-medium">Theme</span>
+                      <ThemeToggle />
+                    </div>
+                  )}
                   
                   {user ? (
                     <>
