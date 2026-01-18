@@ -3,9 +3,9 @@
 import { memo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { LazyImage } from "./lazy-image";
 
 interface PostCardProps {
   id: string;
@@ -55,13 +55,14 @@ export const PostCard = memo(function PostCard({
         {/* Featured Image */}
         {featuredImageUrl && (
           <div className="relative w-full aspect-[16/9] bg-muted overflow-hidden">
-            <Image
+            <LazyImage
               src={featuredImageUrl}
               alt={title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               unoptimized={featuredImageUrl.startsWith('data:')}
+              priority={index < 3}
             />
           </div>
         )}

@@ -3,22 +3,30 @@ import Image from "next/image";
 import { Calendar, Tag } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import DOMPurify from "isomorphic-dompurify";
+import { getPostById } from "@/lib/services/post";
+import { getCategoryById } from "@/lib/services/category";
+
+export const dynamic = "force-dynamic";
 
 async function getPost(id: string) {
   try {
-    // Use Vercel URL or localhost for development
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/posts/${id}`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
+    const post = await getPostById(id);
+    if (!post) {
       return null;
     }
 
-    return await res.json();
+    const category = await getCategoryById(post.categoryId.toString());
+
+    return {
+      _id: post._id?.toString() || "",
+      title: post.title,
+      body: post.body,
+      featuredImageUrl: post.featuredImageUrl,
+      categoryId: post.categoryId.toString(),
+      categoryName: category?.name || "Uncategorized",
+      status: post.status,
+      updatedAt: post.updatedAt.toISOString(),
+    };
   } catch (error) {
     console.error("Error fetching post:", error);
     return null;
@@ -128,7 +136,7 @@ export default async function PostDetailPage({
             {/* Category Badge */}
             <div className="inline-block px-3 py-1 mb-4 text-xs font-medium bg-accent text-accent-foreground rounded-full">
               <Tag className="inline h-3 w-3 mr-1" />
-              {post.categoryId}
+              {post.categoryName}
             </div>
 
             {/* Title */}

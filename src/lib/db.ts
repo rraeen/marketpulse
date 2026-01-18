@@ -54,13 +54,16 @@ export async function getDb() {
     await db.collection("posts").createIndex({ title: "text", body: "text" });
     await db.collection("posts").createIndex({ status: 1 });
     await db.collection("posts").createIndex({ categoryId: 1 });
-    await db.collection("posts").createIndex({ isTrending: 1, status: 1, createdAt: -1 }); // For trending queries
+    await db.collection("posts").createIndex({ status: 1, createdAt: -1 }); // Feed queries
+    await db.collection("posts").createIndex({ categoryId: 1, status: 1, createdAt: -1 }); // Category feeds
+    await db.collection("posts").createIndex({ isTrending: 1, status: 1, createdAt: -1 }); // Trending queries
     
     // Category indexes
     await db.collection("categories").createIndex({ slug: 1 }, { unique: true });
     await db.collection("categories").createIndex({ parentId: 1 });
     await db.collection("categories").createIndex({ order: 1 });
     await db.collection("categories").createIndex({ isActive: 1 });
+    await db.collection("categories").createIndex({ parentId: 1, isActive: 1, order: 1 }); // Tree queries
     
     indexesEnsured = true;
   }

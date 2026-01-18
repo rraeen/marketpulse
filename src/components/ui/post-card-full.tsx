@@ -1,10 +1,10 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import Image from "next/image";
 import { Calendar, ArrowRight } from "lucide-react";
+import { LazyImage } from "./lazy-image";
 
 interface PostCardFullProps {
   id: string;
@@ -25,17 +25,20 @@ export const PostCardFull = memo(function PostCardFull({
   publishedAt,
   index = 0,
 }: PostCardFullProps) {
-  // Create excerpt from body (strip HTML and limit to 200 chars)
-  const excerpt = body
-    .replace(/<[^>]*>/g, "")
-    .substring(0, 200)
-    .trim() + (body.length > 200 ? "..." : "");
+  const excerpt = useMemo(() => {
+    const plainText = body.replace(/<[^>]*>/g, "").trim();
+    return plainText.substring(0, 200) + (plainText.length > 200 ? "..." : "");
+  }, [body]);
 
-  const formattedDate = new Date(publishedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const formattedDate = useMemo(
+    () =>
+      new Date(publishedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    [publishedAt]
+  );
 
   return (
     <motion.article
@@ -55,12 +58,14 @@ export const PostCardFull = memo(function PostCardFull({
         {/* Featured Image - Full Width */}
         {featuredImageUrl && (
           <div className="relative w-full aspect-[21/9] bg-muted overflow-hidden">
-            <Image
+            <LazyImage
               src={featuredImageUrl}
               alt={title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 90vw, 1200px"
+              unoptimized={featuredImageUrl.startsWith('data:')}
+              priority={index === 0}
             />
           </div>
         )}

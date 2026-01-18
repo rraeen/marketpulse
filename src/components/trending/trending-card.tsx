@@ -2,10 +2,10 @@
 
 import { memo } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { motion } from "framer-motion";
 import { Star, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { LazyImage } from "@/components/ui/lazy-image";
 
 interface TrendingCardProps {
   id: string;
@@ -52,16 +52,18 @@ export const TrendingCard = memo(function TrendingCard({
         {/* Image */}
         {featuredImageUrl && (
           <div className="relative w-full aspect-video bg-muted overflow-hidden">
-            <Image
+            <LazyImage
               src={featuredImageUrl}
               alt={title}
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-110"
               sizes="(max-width: 768px) 100vw, 400px"
+              unoptimized={featuredImageUrl.startsWith('data:')}
+              priority={index === 0}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10" />
             {/* Trending Badge */}
-            <div className="absolute top-2 right-2 bg-yellow-400/90 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+            <div className="absolute top-2 right-2 bg-yellow-400/90 backdrop-blur-sm text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1 z-10">
               <Star className="h-3 w-3 fill-white" />
               Trending
             </div>

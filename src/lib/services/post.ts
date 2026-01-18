@@ -223,28 +223,45 @@ export async function getPostById(id: string) {
   
   try {
     const objectId = new ObjectId(trimmedId);
-    console.log("getPostById - Querying with ID:", trimmedId, "ObjectId:", objectId.toString());
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        "getPostById - Querying with ID:",
+        trimmedId,
+        "ObjectId:",
+        objectId.toString()
+      );
+    }
     
     // Query with ObjectId
     const post = await postsCollection.findOne({ _id: objectId });
     
     // If not found, try to find any post to verify DB connection (for debugging)
     if (!post) {
-      const count = await postsCollection.countDocuments({});
-      console.log("getPostById - Post not found. Total posts in collection:", count);
-      
-      // Try to find a post with similar ID (for debugging)
-      const allPosts = await postsCollection.find({}).limit(10).toArray();
-      console.log("getPostById - Sample post IDs:", allPosts.map(p => ({
-        id: p._id?.toString(),
-        title: p.title?.substring(0, 30)
-      })));
+      if (process.env.NODE_ENV !== "production") {
+        const count = await postsCollection.countDocuments({});
+        console.log(
+          "getPostById - Post not found. Total posts in collection:",
+          count
+        );
+
+        // Try to find a post with similar ID (for debugging)
+        const allPosts = await postsCollection.find({}).limit(10).toArray();
+        console.log(
+          "getPostById - Sample post IDs:",
+          allPosts.map((p) => ({
+            id: p._id?.toString(),
+            title: p.title?.substring(0, 30),
+          }))
+        );
+      }
     } else {
-      console.log("getPostById - Found post:", {
-        id: post._id?.toString(),
-        title: post.title?.substring(0, 30),
-        status: post.status
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.log("getPostById - Found post:", {
+          id: post._id?.toString(),
+          title: post.title?.substring(0, 30),
+          status: post.status,
+        });
+      }
     }
     
     return post;

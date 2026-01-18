@@ -174,12 +174,6 @@ export function Header() {
                       onMouseEnter={() => handleCategoryMouseEnter(category._id)}
                       onMouseLeave={handleCategoryMouseLeave}
                     >
-                      <Link
-                        href={`/category/${category.slug}`}
-                        className="block px-4 py-2 text-sm font-medium hover:bg-accent transition-colors border-b border-border"
-                      >
-                        View All {category.name}
-                      </Link>
                       <div className="max-h-[200px] overflow-y-auto">
                         {category.subcategories!.map((sub) => (
                           <Link
