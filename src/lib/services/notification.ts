@@ -33,7 +33,14 @@ async function sendWithRetry(to: string, subject: string, html: string) {
 
 export async function notifyUsersOfNewPost(postId: ObjectId, postTitle: string) {
   const db = await getDb();
-  const users = await db.collection('users').find({ role: 'User' }).toArray();
+  // Only notify users who are interested in premium content
+  const users = await db.collection('users').find({ 
+    role: 'User',
+    isPremiumInterested: true 
+  }).toArray();
+
+  console.log(`📧 Notifying ${users.length} users interested in premium content about new post: "${postTitle}"`);
+
 
   // Process users in batches
   for (let i = 0; i < users.length; i += EMAIL_BATCH_SIZE) {

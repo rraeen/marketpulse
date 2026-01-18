@@ -5,7 +5,7 @@ import { User } from '@/lib/models/user';
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json();
+    const { email, purpose = 'Registration' } = await request.json();
 
     // Validate input
     if (!email) {
@@ -15,19 +15,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if user exists and is pending verification
+    // Validate purpose
+    if (purpose !== 'Registration' && purpose !== 'PasswordReset') {
+      return NextResponse.json(
+        { error: 'Invalid purpose. Must be Registration or PasswordReset' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user exists
     const db = await getDb();
     const usersCollection = db.collection<User>('users');
     const user = await usersCollection.findOne({ email });
 
     if (!user) {
+      // For password reset, don't reveal if user exists (security)
+      if (purpose === 'PasswordReset') {
+        return NextResponse.json(
+          { message: 'If an account exists with this email, you will receive a reset code shortly.' },
+          { status: 200 }
+        );
+      }
       return NextResponse.json(
         { error: 'User not found. Please register first.' },
         { status: 404 }
       );
     }
 
-    if (user.emailVerified) {
+    // For registration, check if already verified
+    if (purpose === 'Registration' && user.emailVerified) {
       return NextResponse.json(
         { error: 'Email already verified. Please log in.' },
         { status: 400 }
@@ -35,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     // Create and send new OTP
-    await createOTP(email, 'Registration', user._id);
+    await createOTP(email, purpose, user._id);
 
     return NextResponse.json(
       { message: 'New OTP sent successfully. Please check your email.' },

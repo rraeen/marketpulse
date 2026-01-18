@@ -8,58 +8,25 @@ import { Container } from "@/components/ui/container";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { OTPInput } from "@/components/ui/otp-input";
-import { validateEmail, validatePassword, validateName } from "@/lib/utils/validation";
-import { Loader2, CheckCircle2, Mail } from "lucide-react";
+import { validateEmail, validatePassword } from "@/lib/utils/validation";
+import { Loader2, CheckCircle2, Mail, Lock, ArrowLeft } from "lucide-react";
 
-type Step = "register" | "verify";
+type Step = "request" | "reset";
 
-export default function RegisterPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("register");
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
+  const [step, setStep] = useState<Step>("request");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [serverError, setServerError] = useState("");
   const [success, setSuccess] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-    setServerError("");
-  };
-
-  const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    const nameValidation = validateName(formData.name);
-    if (!nameValidation.valid) {
-      newErrors.name = nameValidation.error!;
-    }
-
-    if (!validateEmail(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    const passwordValidation = validatePassword(formData.password);
-    if (!passwordValidation.valid) {
-      newErrors.password = passwordValidation.error!;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   // Resend cooldown timer
   useEffect(() => {
@@ -69,30 +36,63 @@ export default function RegisterPage() {
     }
   }, [resendCooldown]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validateEmailStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!email) {
+      newErrors.email = "Email is required";
+    } else if (!validateEmail(email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateResetStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (otp.length !== 6) {
+      newErrors.otp = "Please enter the complete 6-digit OTP";
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      newErrors.password = passwordValidation.error!;
+    }
+
+    if (!confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password";
+    } else if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError("");
 
-    if (!validate()) return;
+    if (!validateEmailStep()) return;
 
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ email }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Registration failed. Please try again.");
+        setServerError(data.error || "Failed to send reset code. Please try again.");
         return;
       }
 
-      // Move to OTP verification step
-      setStep("verify");
+      // Move to reset password step
+      setStep("reset");
       setResendCooldown(60);
     } catch (error) {
       setServerError("An unexpected error occurred. Please try again.");
@@ -101,28 +101,29 @@ export default function RegisterPage() {
     }
   };
 
-  const handleVerifyOTP = async () => {
-    if (otp.length !== 6) {
-      setErrors({ otp: "Please enter the complete 6-digit OTP" });
-      return;
-    }
-
-    setIsVerifying(true);
-    setErrors({});
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
     setServerError("");
 
+    if (!validateResetStep()) return;
+
+    setIsResetting(true);
+
     try {
-      const res = await fetch("/api/auth/verify-otp", {
+      const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, otp }),
+        body: JSON.stringify({ email, otp, newPassword: password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setErrors({ otp: data.error || "Invalid or expired OTP. Please try again." });
-        setOtp("");
+        if (data.error.includes("OTP") || data.error.includes("expired") || data.error.includes("Invalid")) {
+          setErrors({ otp: data.error });
+        } else {
+          setServerError(data.error || "Failed to reset password. Please try again.");
+        }
         return;
       }
 
@@ -133,7 +134,7 @@ export default function RegisterPage() {
     } catch (error) {
       setServerError("An unexpected error occurred. Please try again.");
     } finally {
-      setIsVerifying(false);
+      setIsResetting(false);
     }
   };
 
@@ -147,13 +148,13 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/resend-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email }),
+        body: JSON.stringify({ email, purpose: "PasswordReset" }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Failed to resend OTP. Please try again.");
+        setServerError(data.error || "Failed to resend code. Please try again.");
         return;
       }
 
@@ -178,12 +179,12 @@ export default function RegisterPage() {
         >
           <div className="text-center mb-8">
             <h1 className="text-3xl font-semibold tracking-tight mb-2">
-              {step === "register" ? "Create an account" : "Verify your email"}
+              {step === "request" ? "Forgot Password?" : "Reset Password"}
             </h1>
             <p className="text-muted-foreground">
-              {step === "register"
-                ? "Join MarketPulse to access premium insights"
-                : `We sent a verification code to ${formData.email}`}
+              {step === "request"
+                ? "Enter your email address and we'll send you a reset code"
+                : `Enter the code sent to ${email} and your new password`}
             </p>
           </div>
 
@@ -200,21 +201,21 @@ export default function RegisterPage() {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                     <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">Email verified!</h3>
+                  <h3 className="text-lg font-semibold mb-2">Password reset successful!</h3>
                   <p className="text-muted-foreground text-sm mb-4">
-                    Your account has been activated successfully.
+                    Your password has been updated successfully.
                   </p>
                   <p className="text-muted-foreground text-sm">
                     Redirecting to login...
                   </p>
                 </motion.div>
-              ) : step === "register" ? (
+              ) : step === "request" ? (
                 <motion.form
-                  key="register"
+                  key="request"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
-                  onSubmit={handleSubmit}
+                  onSubmit={handleRequestOTP}
                   className="space-y-4"
                 >
                   {serverError && (
@@ -224,71 +225,48 @@ export default function RegisterPage() {
                   )}
 
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium mb-1.5">
-                      Full Name
-                    </label>
-                    <Input
-                      id="name"
-                      name="name"
-                      type="text"
-                      value={formData.name}
-                      onChange={handleChange}
-                      error={errors.name}
-                      placeholder="John Doe"
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div>
                     <label htmlFor="email" className="block text-sm font-medium mb-1.5">
-                      Email
+                      Email Address
                     </label>
                     <Input
                       id="email"
                       name="email"
                       type="email"
-                      value={formData.email}
-                      onChange={handleChange}
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (errors.email) setErrors({ ...errors, email: "" });
+                        setServerError("");
+                      }}
                       error={errors.email}
                       placeholder="john@example.com"
                       disabled={isLoading}
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium mb-1.5">
-                      Password
-                    </label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      error={errors.password}
-                      placeholder="••••••••"
-                      disabled={isLoading}
+                      autoComplete="email"
                     />
                   </div>
 
                   <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
-                    Create Account
+                    Send Reset Code
                   </Button>
 
-                  <p className="text-center text-sm text-muted-foreground">
-                    Already have an account?{" "}
-                    <Link href="/login" className="font-medium text-foreground hover:underline">
-                      Sign in
+                  <div className="pt-4 border-t border-border">
+                    <Link
+                      href="/login"
+                      className="flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to login
                     </Link>
-                  </p>
+                  </div>
                 </motion.form>
               ) : (
-                <motion.div
-                  key="verify"
+                <motion.form
+                  key="reset"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
+                  onSubmit={handleResetPassword}
+                  className="space-y-4"
                 >
                   {serverError && (
                     <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
@@ -296,7 +274,7 @@ export default function RegisterPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-center mb-6">
+                  <div className="flex items-center justify-center mb-4">
                     <div className="w-16 h-16 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
                       <Mail className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
                     </div>
@@ -304,26 +282,71 @@ export default function RegisterPage() {
 
                   <div>
                     <label className="block text-sm font-medium mb-4 text-center">
-                      Enter the 6-digit code sent to your email
+                      Enter the 6-digit verification code
                     </label>
                     <OTPInput
                       value={otp}
-                      onChange={setOtp}
-                      disabled={isVerifying}
+                      onChange={(value) => {
+                        setOtp(value);
+                        if (errors.otp) setErrors({ ...errors, otp: "" });
+                      }}
+                      disabled={isResetting}
                       error={errors.otp}
                       autoFocus
                     />
                   </div>
 
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium mb-1.5">
+                      New Password
+                    </label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errors.password) setErrors({ ...errors, password: "" });
+                      }}
+                      error={errors.password}
+                      placeholder="••••••••"
+                      disabled={isResetting}
+                      autoComplete="new-password"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Must be at least 8 characters with uppercase, lowercase, number, and special character
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1.5">
+                      Confirm Password
+                    </label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: "" });
+                      }}
+                      error={errors.confirmPassword}
+                      placeholder="••••••••"
+                      disabled={isResetting}
+                      autoComplete="new-password"
+                    />
+                  </div>
+
                   <Button
-                    type="button"
+                    type="submit"
                     className="w-full"
                     size="lg"
-                    onClick={handleVerifyOTP}
-                    isLoading={isVerifying}
-                    disabled={otp.length !== 6 || isVerifying}
+                    isLoading={isResetting}
+                    disabled={otp.length !== 6 || !password || !confirmPassword || isResetting}
                   >
-                    Verify Email
+                    Reset Password
                   </Button>
 
                   <div className="text-center space-y-2">
@@ -353,17 +376,20 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setStep("register");
+                        setStep("request");
                         setOtp("");
+                        setPassword("");
+                        setConfirmPassword("");
                         setErrors({});
                         setServerError("");
                       }}
-                      className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      ← Back to registration
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to email entry
                     </button>
                   </div>
-                </motion.div>
+                </motion.form>
               )}
             </AnimatePresence>
           </div>

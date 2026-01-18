@@ -40,20 +40,15 @@ export async function PATCH(request: Request) {
 
     const result = await db.collection('users').findOneAndUpdate(
       { _id: userId },
-      { $set: { isPremiumInterested } },
+      { $set: { isPremiumInterested, updatedAt: new Date() } },
       { returnDocument: 'after', projection: { passwordHash: 0 } }
     );
 
-    console.log('Update result:', {
-      found: !!result,
-      value: result ? 'exists' : 'null'
-    });
-
-    if (!result) {
+    if (!result || !result.value) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const updatedUser = result;
+    const updatedUser = result.value;
 
     return NextResponse.json(updatedUser);
   } catch (error) {

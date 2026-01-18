@@ -71,15 +71,21 @@ export async function loginUser(email: string, password: string) {
     throw new Error('Invalid credentials');
   }
 
-  // Check if email is verified
-  if (!user.emailVerified || user.verificationStatus !== 'Verified') {
-    throw new Error('Email not verified. Please verify your email before logging in.');
-  }
-
-  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
     throw new Error('Invalid credentials');
   }
+
+  if(user.role !="Admin"){
+    if (!user.emailVerified || user.verificationStatus !== 'Verified') {
+      throw new Error('Email not verified. Please verify your email before logging in.');
+    }
+
+  }
+
+  // Check if email is verified
+
+
 
   const token = await new SignJWT({
     userId: user._id?.toString(),
@@ -91,7 +97,9 @@ export async function loginUser(email: string, password: string) {
     .setExpirationTime('7d')
     .sign(JWT_SECRET);
 
-  return { user, token };
+  const { passwordHash, ...safeUser } = user;
+
+  return { safeUser, token };
 }
 
 /**
@@ -115,6 +123,7 @@ export async function verifyUserEmail(email: string): Promise<void> {
 
 /**
  * Reset user password
+ * Also verifies email since OTP verification proves ownership
  */
 export async function resetUserPassword(email: string, newPassword: string): Promise<void> {
   const db = await getDb();
@@ -129,12 +138,15 @@ export async function resetUserPassword(email: string, newPassword: string): Pro
   // Hash new password
   const passwordHash = await bcrypt.hash(newPassword, 12);
 
-  // Update password
+  // Update password and verify email
+  // Since the user successfully verified OTP, they've proven email ownership
   await usersCollection.updateOne(
     { email },
     {
       $set: {
         passwordHash,
+        emailVerified: true,
+        verificationStatus: 'Verified',
         updatedAt: new Date(),
       },
     }

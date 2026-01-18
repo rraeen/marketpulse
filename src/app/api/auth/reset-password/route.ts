@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyOTP } from '@/lib/services/otp';
 import { resetUserPassword } from '@/lib/services/auth';
-import { validatePassword } from '@/lib/utils/password-validation';
+import { validatePasswordStrength } from '@/lib/utils/password-validation';
 
 export async function POST(request: Request) {
   try {
@@ -16,11 +16,10 @@ export async function POST(request: Request) {
     }
 
     // Validate password strength
-    if (!validatePassword(newPassword)) {
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
       return NextResponse.json(
-        { 
-          error: 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character' 
-        },
+        { error: passwordValidation.error },
         { status: 400 }
       );
     }

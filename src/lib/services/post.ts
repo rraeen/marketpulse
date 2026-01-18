@@ -97,8 +97,10 @@ export async function createPost(data: Omit<Post, '_id' | 'createdAt' | 'updated
   const result = await postsCollection.insertOne(newPost);
   newPost._id = result.insertedId;
 
-  // Note: Notifications are only sent when status changes from Draft to Published
-  // This happens in updatePost, not on initial creation
+  // Trigger notification if created with Published status
+  if (newPost.status === 'Published') {
+    notifyUsersOfNewPost(newPost._id as ObjectId, newPost.title).catch(console.error);
+  }
 
   return newPost;
 }
@@ -175,7 +177,7 @@ export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'c
     });
 
     // Trigger notification if status changed from Draft to Published
-    if (oldPost.status === 'Draft' && data.status === 'Published' && updatedPost) {
+    if (data.status === 'Published' && updatedPost) {
       notifyUsersOfNewPost(updatedPost._id as ObjectId, updatedPost.title).catch(console.error);
     }
 
