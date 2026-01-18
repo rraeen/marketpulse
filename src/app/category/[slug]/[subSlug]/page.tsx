@@ -4,14 +4,23 @@ import { Container } from "@/components/ui/container";
 import { CategoryPostsList } from "@/components/category/category-posts-list";
 import { TrendingSidebar } from "@/components/trending/trending-sidebar";
 import { ChevronRight } from "lucide-react";
+import { headers } from "next/headers";
+
+async function getBaseUrl() {
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
+  const protocol = hdrs.get("x-forwarded-proto") ?? "https";
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+}
 
 async function getSubcategoryPosts(categorySlug: string, subSlug: string) {
   try {
-    // Use Vercel URL or localhost for development
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    
+    const baseUrl = await getBaseUrl();
     const res = await fetch(
       `${baseUrl}/api/posts?categorySlug=${categorySlug}&subcategorySlug=${subSlug}&page=1&limit=3`,
       { cache: "no-store" }
