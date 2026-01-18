@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { user, token } = await loginUser(email, password);
+    const { safeUser: user, token } = await loginUser(email, password);
 
     // Set cookie
     const cookieStore = await cookies();
@@ -44,12 +44,8 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    const userWithoutPassword = { ...user };
-    // @ts-expect-error - removing passwordHash before returning to client
-    delete userWithoutPassword.passwordHash;
-
     // In test mode, also return the token in the response for testing purposes
-    const responseData: any = { message: 'Login successful', user: userWithoutPassword };
+    const responseData: any = { message: 'Login successful', user };
     if (process.env.NODE_ENV === 'test') {
       responseData.token = token;
     }
