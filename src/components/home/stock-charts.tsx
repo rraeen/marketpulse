@@ -74,8 +74,8 @@ export function StockCharts() {
             </p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-background border border-border rounded-lg p-6 shadow-sm h-[350px] animate-pulse" />
-            <div className="bg-background border border-border rounded-lg p-6 shadow-sm h-[350px] animate-pulse" />
+            <div className="bg-[#b6cae2]/40 dark:bg-[#b6cae2]/30 backdrop-blur-md border border-border/50 rounded-lg p-6 shadow-sm h-[350px] animate-pulse" />
+            <div className="bg-[#b6cae2]/40 dark:bg-[#b6cae2]/30 backdrop-blur-md border border-border/50 rounded-lg p-6 shadow-sm h-[350px] animate-pulse" />
           </div>
         </Container>
       </section>

@@ -5,13 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from "framer-motion";
-import { Menu, X, Search as SearchIcon, User, LogOut, ChevronDown } from "lucide-react";
+import { Menu, X, Search as SearchIcon, User, LogOut, ChevronDown, Settings } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { SearchInput } from "@/components/ui/search-input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { CategoryTree } from "@/lib/types/category";
 import { cn } from "@/lib/utils/cn";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { useTheme } from "next-themes";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -21,9 +23,15 @@ export function Header() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [hoveredMore, setHoveredMore] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -115,11 +123,16 @@ export function Header() {
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
       className={cn(
         "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
-        isScrolled
-          ? "bg-background/80 backdrop-blur-md border-border/50 shadow-sm"
-          : "bg-background border-border"
+        "navbar-light-mode",
+        isScrolled && "backdrop-blur-md border-border/50 shadow-sm"
       )}
-      style={{ position: "fixed", top: 0, left: 0, right: 0 }}
+      style={{ 
+        position: "fixed", 
+        top: 0, 
+        left: 0, 
+        right: 0,
+        backgroundColor: mounted && theme !== "dark" ? (isScrolled ? "rgba(22, 33, 62, 0.95)" : "#16213e") : undefined
+      } as React.CSSProperties}
     >
       <Container>
         <nav className="flex h-16 items-center gap-8">
@@ -133,7 +146,7 @@ export function Header() {
               alt="MarketPulse"
               width={140}
               height={40}
-              className="h-8 w-auto"
+              className="h-8 w-auto brightness-0 invert dark:brightness-100 dark:invert-0"
               priority
             />
           </Link>
@@ -155,7 +168,7 @@ export function Header() {
                   <Link
                     href={`/category/${category.slug}`}
                     className={cn(
-                      "flex items-center gap-1 text-sm font-medium transition-colors hover:text-foreground whitespace-nowrap",
+                      "flex items-center gap-1 text-sm font-medium transition-colors hover:text-yellow-400 whitespace-nowrap",
                       isActive ? "text-foreground" : "text-muted-foreground"
                     )}
                   >
@@ -179,15 +192,15 @@ export function Header() {
                           <Link
                             key={sub._id}
                             href={`/category/${category.slug}/${sub.slug}`}
-                            className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            className="block px-4 py-2 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
                           >
                             {sub.name}
                           </Link>
                         ))}
                       </div>
                       {category.subcategories!.length > 5 && (
-                        <div className="text-center py-1 text-xs text-muted-foreground border-t border-border">
-                          <ChevronDown className="h-3 w-3 mx-auto" />
+                        <div className="text-center py-1 text-xs text-white/70 dark:text-muted-foreground border-t border-white/20 dark:border-border">
+                          <ChevronDown className="h-3 w-3 mx-auto text-white/70 dark:text-muted-foreground" />
                         </div>
                       )}
                     </motion.div>
@@ -205,7 +218,7 @@ export function Header() {
               >
                 <button
                   className={cn(
-                    "flex items-center gap-1 text-sm font-medium transition-colors hover:text-foreground",
+                    "flex items-center gap-1 text-sm font-medium transition-colors hover:text-yellow-400",
                     hoveredMore ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
@@ -219,7 +232,7 @@ export function Header() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
                     transition={{ duration: 0.2 }}
-                    className="absolute top-full right-0 mt-2 w-56 bg-background border border-border rounded-lg shadow-lg overflow-hidden max-h-[400px] overflow-y-auto"
+                    className="absolute top-full right-0 mt-2 w-56 bg-[#16213e] dark:bg-background border border-white/20 dark:border-border rounded-lg shadow-lg overflow-hidden max-h-[400px] overflow-y-auto"
                     onMouseEnter={handleMoreMouseEnter}
                     onMouseLeave={handleMoreMouseLeave}
                   >
@@ -230,7 +243,7 @@ export function Header() {
                         <div key={category._id}>
                           <Link
                             href={`/category/${category.slug}`}
-                            className="block px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
+                            className="block px-4 py-2 text-sm font-medium text-muted-foreground hover:text-yellow-400 transition-colors"
                           >
                             {category.name}
                           </Link>
@@ -240,7 +253,7 @@ export function Header() {
                                 <Link
                                   key={sub._id}
                                   href={`/category/${category.slug}/${sub.slug}`}
-                                  className="block px-4 py-2 pl-8 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                  className="block px-4 py-2 pl-8 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
                                 >
                                   └─ {sub.name}
                                 </Link>
@@ -265,24 +278,33 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 ml-auto">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             {/* Auth Buttons - Desktop */}
             <div className="hidden md:flex items-center gap-2">
               {user ? (
                 <>
                   {user.role === "Admin" && (
                     <Link href="/admin">
-                      <Button variant="ghost" size="sm">
-                        Dashboard
+                      <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
+                        <Settings className="h-4 w-4" />
+                        Settings
                       </Button>
                     </Link>
                   )}
                   <Link href="/profile">
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
                       <User className="h-4 w-4" />
                       {user.name}
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="sm" onClick={logout}>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                    onClick={logout}
+                  >
                     <LogOut className="h-4 w-4" />
                     Logout
                   </Button>
@@ -295,7 +317,9 @@ export function Header() {
                     </Button>
                   </Link>
                   <Link href="/register">
-                    <Button size="sm">Get Started</Button>
+                    <Button size="sm" className="bg-white text-[#16213e] dark:bg-foreground dark:text-background hover:bg-white/90 dark:hover:bg-foreground/90">
+                      <span>Get Started</span>
+                    </Button>
                   </Link>
                 </>
               )}
@@ -304,7 +328,7 @@ export function Header() {
             {/* Search Button - Mobile */}
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="md:hidden p-2 text-foreground hover:bg-accent rounded-md transition-colors"
+              className="md:hidden p-2 text-white dark:text-foreground hover:bg-white/10 dark:hover:bg-accent rounded-md transition-colors"
               aria-label="Toggle search"
             >
               <SearchIcon className="h-5 w-5" />
@@ -380,7 +404,7 @@ export function Header() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-16 right-0 bottom-0 w-64 bg-background border-l border-border md:hidden z-50 overflow-y-auto"
+              className="fixed top-16 right-0 bottom-0 w-64 bg-[#16213e] dark:bg-background border-l border-white/20 dark:border-border md:hidden z-50 overflow-y-auto"
             >
               <nav className="flex flex-col p-6 gap-2">
                 {/* Mobile Categories */}
@@ -412,7 +436,7 @@ export function Header() {
                           <Link
                             href={`/category/${category.slug}`}
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex-1 py-2 text-base font-medium text-foreground hover:text-foreground/70 transition-colors"
+                            className="flex-1 py-2 text-base font-medium text-white dark:text-foreground hover:text-yellow-400 dark:hover:text-yellow-400 transition-colors"
                           >
                             {category.name}
                           </Link>
@@ -427,7 +451,7 @@ export function Header() {
                               key={sub._id}
                               href={`/category/${category.slug}/${sub.slug}`}
                               onClick={() => setIsMobileMenuOpen(false)}
-                              className="block py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                              className="block py-2 text-sm text-muted-foreground hover:text-yellow-400 transition-colors"
                             >
                               └─ {sub.name}
                             </Link>
@@ -440,25 +464,32 @@ export function Header() {
 
                 {/* Mobile Auth Actions */}
                 <div className="border-t border-border pt-4 mt-2 space-y-2">
+                  {/* Theme Toggle - Mobile */}
+                  <div className="flex items-center justify-between px-2 py-2">
+                    <span className="text-sm font-medium">Theme</span>
+                    <ThemeToggle />
+                  </div>
+                  
                   {user ? (
                     <>
                       {user.role === "Admin" && (
                         <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                          <Button variant="outline" className="w-full justify-start" size="sm">
-                            Dashboard
+                          <Button variant="ghost" size="sm" className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
+                            <Settings className="h-4 w-4" />
+                            Settings
                           </Button>
                         </Link>
                       )}
                       <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button variant="outline" className="w-full justify-start" size="sm">
+                        <Button variant="ghost" size="sm" className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
                           <User className="h-4 w-4" />
                           Profile
                         </Button>
                       </Link>
                       <Button
-                        variant="outline"
-                        className="w-full justify-start"
+                        variant="ghost"
                         size="sm"
+                        className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
                         onClick={() => {
                           setIsMobileMenuOpen(false);
                           logout();
@@ -471,7 +502,7 @@ export function Header() {
                   ) : (
                     <>
                       <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button variant="outline" className="w-full" size="sm">
+                        <Button variant="ghost" size="sm" className="w-full">
                           Sign In
                         </Button>
                       </Link>
