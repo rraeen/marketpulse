@@ -4,7 +4,8 @@ export interface User {
   _id?: ObjectId;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string; // Optional for Google OAuth users
+  googleId?: string; // Google OAuth user ID
   role: 'Admin' | 'User';
   isPremiumInterested: boolean;
   emailVerified: boolean;

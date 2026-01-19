@@ -123,9 +123,9 @@ export function Header() {
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         "navbar-light-mode",
-        isScrolled && "backdrop-blur-md border-border/50 shadow-sm"
+        isScrolled && "backdrop-blur-md shadow-sm"
       )}
       style={{ 
         position: "fixed", 
@@ -328,15 +328,12 @@ export function Header() {
                 </>
               ) : (
                 <>
-                  <Link href="/login">
-                    <Button variant="ghost" size="sm">
-                      Sign In
-                    </Button>
+                  <Link href="/login" className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground">
+                    Sign In
                   </Link>
-                  <Link href="/register">
-                    <Button size="sm" className="bg-white text-[#16213e] dark:bg-foreground dark:text-background hover:bg-white/90 dark:hover:bg-foreground/90">
-                      <span>Get Started</span>
-                    </Button>
+                  <span className="text-red-500 dark:text-red-400">/</span>
+                  <Link href="/register" className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground">
+                    Sign Up
                   </Link>
                 </>
               )}
@@ -530,15 +527,14 @@ export function Header() {
                     </>
                   ) : (
                     <>
-                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button variant="ghost" size="sm" className="w-full">
-                          Sign In
-                        </Button>
+                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground py-2 block">
+                        Sign In
                       </Link>
-                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button className="w-full" size="sm">
-                          Get Started
-                        </Button>
+                      <div className="flex items-center justify-center gap-2 py-2">
+                        <span className="text-red-500 dark:text-red-400">/</span>
+                      </div>
+                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground py-2 block">
+                        Sign Up
                       </Link>
                     </>
                   )}

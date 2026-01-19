@@ -73,3 +73,26 @@ html:not(.dark) header.navbar-light-mode {
 html:not(.dark) header.navbar-light-mode[style*="rgba"] {
   background-color: rgba(22, 33, 62, 0.95) !important;
 }
+
+/* Scrollable select dropdowns - style options for better UX */
+/* Note: Native select dropdown height is browser-controlled, but browsers typically
+   auto-scroll when there are many options. The dropdown closes by default and opens on click. */
+select.select-scrollable option {
+  padding: 0.5rem 1rem;
+}
+
+/* Category select with max height - using size attribute for scrollable list */
+select.category-select-scrollable[size] {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+select.category-select-scrollable option {
+  padding: 0.5rem 1rem;
+}
+
+/* Preserve subcategory indentation */
+select.category-select-scrollable option.subcategory-option {
+  padding-left: 2rem;
+  font-size: 0.875rem;
+}

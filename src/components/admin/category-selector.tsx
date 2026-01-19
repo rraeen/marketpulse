@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Select } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Loader2 } from "lucide-react";
 import { CategoryTree } from "@/lib/types/category";
 
@@ -75,11 +75,12 @@ export function CategorySelector({
   }
 
   return (
-    <Select
+    <CustomSelect
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
       error={error}
       disabled={disabled}
+      scrollable
     >
       <option value="">Select Category</option>
       {categories.map((category) => (
@@ -99,6 +100,6 @@ export function CategorySelector({
             ))}
         </React.Fragment>
       ))}
-    </Select>
+    </CustomSelect>
   );
 }

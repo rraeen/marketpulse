@@ -452,6 +452,7 @@ export default function AdminCategoriesPage() {
                 value={formData.parentId}
                 onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                 disabled={isSaving}
+                scrollable
               >
                 <option value="">None (Main Category)</option>
                 {mainCategories.map((cat) => (
@@ -528,6 +529,7 @@ export default function AdminCategoriesPage() {
                 value={formData.parentId}
                 onChange={(e) => setFormData({ ...formData, parentId: e.target.value })}
                 disabled={isSaving}
+                scrollable
               >
                 <option value="">None (Main Category)</option>
                 {mainCategories

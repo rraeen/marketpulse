@@ -72,7 +72,12 @@ export async function loginUser(email: string, password: string) {
     throw new Error('Invalid credentials');
   }
 
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+  // Check if user has a password (not a Google-only account)
+  if (!user.passwordHash) {
+    throw new Error('Invalid credentials. Please sign in with Google.');
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
     throw new Error('Invalid credentials');
   }
@@ -213,4 +218,116 @@ export async function revokeUserSessions(userId: string): Promise<void> {
       $set: { updatedAt: new Date() },
     }
   );
+}
+
+/**
+ * Login or register user with Google OAuth
+ * If user exists with Google ID, logs them in
+ * If user exists with email but no Google ID, links Google account
+ * If user doesn't exist, creates new user with Google credentials
+ */
+export async function loginOrRegisterWithGoogle(data: {
+  googleId: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+}) {
+  const db = await getDb();
+  const usersCollection = db.collection<User>('users');
+
+  // Check if user exists with this Google ID
+  let user = await usersCollection.findOne({ googleId: data.googleId });
+
+  if (user) {
+    // User exists with Google ID - log them in
+    const sessionVersion = user.sessionVersion || 0;
+
+    const token = await new SignJWT({
+      userId: user._id?.toString(),
+      email: user.email,
+      role: user.role,
+      sessionVersion,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+
+    const { passwordHash, ...safeUser } = user;
+    return { safeUser, token };
+  }
+
+  // Check if user exists with this email (maybe they registered with email/password)
+  user = await usersCollection.findOne({ email: data.email });
+
+  if (user) {
+    // User exists with email - link Google account
+    await usersCollection.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          googleId: data.googleId,
+          // If Google verified the email, mark it as verified
+          emailVerified: data.emailVerified || user.emailVerified,
+          verificationStatus: data.emailVerified ? 'Verified' : user.verificationStatus,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    // Refresh user data
+    const updatedUser = await usersCollection.findOne({ _id: user._id });
+    if (!updatedUser) {
+      throw new Error('Failed to update user');
+    }
+
+    const sessionVersion = updatedUser.sessionVersion || 0;
+
+    const token = await new SignJWT({
+      userId: updatedUser._id?.toString(),
+      email: updatedUser.email,
+      role: updatedUser.role,
+      sessionVersion,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
+
+    const { passwordHash, ...safeUser } = updatedUser;
+    return { safeUser, token };
+  }
+
+  // User doesn't exist - create new user with Google credentials
+  const newUser: User = {
+    name: data.name,
+    email: data.email,
+    googleId: data.googleId,
+    role: 'User',
+    isPremiumInterested: false,
+    // Google-verified emails are automatically verified
+    emailVerified: data.emailVerified,
+    verificationStatus: data.emailVerified ? 'Verified' : 'Pending',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const result = await usersCollection.insertOne(newUser);
+  newUser._id = result.insertedId;
+
+  const sessionVersion = newUser.sessionVersion || 0;
+
+  const token = await new SignJWT({
+    userId: newUser._id?.toString(),
+    email: newUser.email,
+    role: newUser.role,
+    sessionVersion,
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(JWT_SECRET);
+
+  const { passwordHash, ...safeUser } = newUser;
+  return { safeUser, token };
 }
