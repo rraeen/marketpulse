@@ -50,15 +50,19 @@ async function ensureCollectionSchemas(db: Db) {
   const usersSchema = {
     $jsonSchema: {
       bsonType: "object",
-      required: ["name", "email", "passwordHash", "role", "isPremiumInterested", "createdAt"],
+      required: ["name", "email", "role", "isPremiumInterested", "createdAt"],
       properties: {
         name: { bsonType: "string" },
         email: { bsonType: "string", pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
-        passwordHash: { bsonType: "string" },
+        passwordHash: { bsonType: ["string", "null"] }, // Optional for Google OAuth users
+        googleId: { bsonType: ["string", "null"] }, // Google OAuth user ID
         role: { enum: ["Admin", "User"] },
         isPremiumInterested: { bsonType: "bool" },
-        sessionVersion: { bsonType: "int", minimum: 0 },
+        emailVerified: { bsonType: "bool" },
+        verificationStatus: { enum: ["Pending", "Verified"] },
+        sessionVersion: { bsonType: ["int", "null"], minimum: 0 },
         createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: ["date", "null"] },
       },
     },
   };
@@ -171,6 +175,8 @@ async function initDatabase() {
     // User indexes
     await db.collection("users").createIndex({ email: 1 }, { unique: true });
     console.log("  ✓ users.email (unique)");
+    await db.collection("users").createIndex({ googleId: 1 }, { sparse: true });
+    console.log("  ✓ users.googleId (sparse)");
 
     // Post indexes
     await db.collection("posts").createIndex({ title: "text", body: "text" });
