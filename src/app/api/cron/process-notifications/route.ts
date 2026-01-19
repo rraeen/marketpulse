@@ -8,11 +8,13 @@ import { processNotificationJobs } from '@/lib/services/notification-job';
  * {
  *   "crons": [{
  *     "path": "/api/cron/process-notifications",
- *     "schedule": "*/5 * * * *"
+ *     "schedule": "every 5 minutes"
  *   }]
  * }
  * 
  * Or use Vercel Dashboard: Project Settings > Cron Jobs
+ * 
+ * Note: Cron schedule format supports "every 5 minutes" or standard cron syntax
  */
 export async function GET(request: Request) {
   // Verify this is called by Vercel Cron (optional security check)
