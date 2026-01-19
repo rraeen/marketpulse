@@ -123,7 +123,7 @@ export function Header() {
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        "fixed top-0 left-0 right-0 z-50 border-b border-gray-200/30 dark:border-gray-800/30 transition-all duration-300",
         "navbar-light-mode",
         isScrolled && "backdrop-blur-md shadow-sm"
       )}

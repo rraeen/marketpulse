@@ -45,7 +45,6 @@ export async function POST(request: Request) {
 
     // Don't return password hash
     const userWithoutPassword = { ...user };
-    // @ts-expect-error - removing passwordHash before returning to client
     delete userWithoutPassword.passwordHash;
 
     return NextResponse.json(

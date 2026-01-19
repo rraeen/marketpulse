@@ -57,18 +57,19 @@ export const CustomSelect = forwardRef<HTMLSelectElement, CustomSelectProps>(
       React.Children.forEach(node, (child) => {
         if (React.isValidElement(child)) {
           if (child.type === 'option') {
-            const option = child.props;
+            const option = child.props as { value?: string; children?: React.ReactNode };
             // Get label - handle string children and preserve formatting (like └─ prefix)
             let label = "";
-            if (typeof child.props.children === 'string') {
-              label = child.props.children;
-            } else if (React.isValidElement(child.props.children)) {
+            const children = option.children;
+            if (typeof children === 'string') {
+              label = children;
+            } else if (React.isValidElement(children)) {
               // Handle nested elements
-              label = String(child.props.children);
-            } else if (Array.isArray(child.props.children)) {
+              label = String(children);
+            } else if (Array.isArray(children)) {
               // Handle array of children (preserve hierarchy)
-              label = child.props.children.map((c: any) => 
-                typeof c === 'string' ? c : (React.isValidElement(c) ? c.props.children : String(c))
+              label = children.map((c: any) => 
+                typeof c === 'string' ? c : (React.isValidElement(c) ? String(c) : String(c))
               ).join('');
             } else {
               label = option.value || "";
@@ -77,9 +78,12 @@ export const CustomSelect = forwardRef<HTMLSelectElement, CustomSelectProps>(
               value: option.value || "",
               label: label,
             });
-          } else if (child.type === React.Fragment || (child.props && child.props.children)) {
+          } else {
             // Handle React.Fragment or nested children
-            extractOptions(child.props.children);
+            const props = child.props as { children?: React.ReactNode };
+            if (props?.children) {
+              extractOptions(props.children);
+            }
           }
         }
       });
