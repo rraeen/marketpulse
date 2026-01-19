@@ -92,8 +92,19 @@ export async function GET(request: Request) {
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}${redirectUrl}`
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Google OAuth callback error:', error);
+    
+    // Log detailed validation error if it's a MongoDB validation error
+    if (error.code === 121 && error.errInfo) {
+      console.error('MongoDB Validation Error Details:', {
+        code: error.code,
+        codeName: error.codeName,
+        errInfo: error.errInfo,
+        failingDocument: error.errInfo?.details?.schemaRulesNotSatisfied,
+      });
+    }
+    
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/login?error=oauth_error`
     );

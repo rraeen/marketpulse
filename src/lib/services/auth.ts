@@ -310,10 +310,44 @@ export async function loginOrRegisterWithGoogle(data: {
     verificationStatus: data.emailVerified ? 'Verified' : 'Pending',
     createdAt: new Date(),
     updatedAt: new Date(),
+    // Explicitly set sessionVersion to 0 for new users
+    sessionVersion: 0,
   };
 
-  const result = await usersCollection.insertOne(newUser);
-  newUser._id = result.insertedId;
+  let result;
+  try {
+    result = await usersCollection.insertOne(newUser);
+    newUser._id = result.insertedId;
+  } catch (error: any) {
+    // Log detailed validation error
+    if (error.code === 121) {
+      const errDetails = error.errInfo?.details || {};
+      console.error('MongoDB Validation Error Details:', {
+        code: error.code,
+        codeName: error.codeName,
+        message: error.message,
+        failingFields: errDetails.schemaRulesNotSatisfied || 'Unknown',
+        documentBeingInserted: {
+          name: newUser.name,
+          email: newUser.email,
+          hasPasswordHash: !!newUser.passwordHash,
+          hasGoogleId: !!newUser.googleId,
+          role: newUser.role,
+          isPremiumInterested: newUser.isPremiumInterested,
+          emailVerified: newUser.emailVerified,
+          verificationStatus: newUser.verificationStatus,
+          hasSessionVersion: newUser.sessionVersion !== undefined,
+          hasCreatedAt: !!newUser.createdAt,
+          hasUpdatedAt: !!newUser.updatedAt,
+        },
+        fullErrorInfo: JSON.stringify(error.errInfo, null, 2),
+      });
+      
+      // If it's a schema validation error, provide helpful message
+      throw new Error(`Database schema validation failed. Please run 'npm run init:db' to update the schema. Error: ${error.message}`);
+    }
+    throw error;
+  }
 
   const sessionVersion = newUser.sessionVersion || 0;
 
