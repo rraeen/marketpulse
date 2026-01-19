@@ -2,11 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  // Ensure environment variables are loaded
-  env: {
-    // Explicitly expose MONGODB_URI (though it should work without this)
-    MONGODB_URI: process.env.MONGODB_URI,
-  },
+  // NOTE: MONGODB_URI is NOT exposed here to prevent client-side leaks.
+  // It's only accessed in server-side code (API routes, server components).
   
   // Enable standalone output for Docker deployment
   output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
@@ -27,6 +24,17 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '**.marketpulse.com',
+        pathname: '/**',
+      },
+      // Cloudflare R2 public bucket / custom domains
+      {
+        protocol: 'https',
+        hostname: '**.r2.cloudflarestorage.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.r2.dev',
         pathname: '/**',
       },
     ],

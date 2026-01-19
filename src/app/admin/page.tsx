@@ -11,6 +11,7 @@ import { Loader2, Plus, Edit, Trash2, Eye } from "lucide-react";
 import { TrendingToggle } from "@/components/admin/trending-toggle";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { useToast } from "@/components/ui/toast";
+import { fetchWithCsrf } from "@/lib/utils/fetch-with-csrf";
 
 interface Post {
   _id: string;
@@ -75,7 +76,7 @@ export default function AdminDashboard() {
     setIsDeleting(true);
 
     try {
-      const res = await fetch(`/api/admin/posts/${encodeURIComponent(postId)}`, {
+      const res = await fetchWithCsrf(`/api/admin/posts/${encodeURIComponent(postId)}`, {
         method: "DELETE",
       });
 

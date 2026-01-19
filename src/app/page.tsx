@@ -75,7 +75,7 @@ export default function Home() {
       <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background z-0" />
 
       {/* HERO */}
-      <section className="relative py-28 md:py-36 lg:py-44 z-10">
+      <section className="relative py-20  z-10">
         <Container>
           <motion.div
             variants={containerVariants}
@@ -176,7 +176,7 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {mainCategories.map((category, index) => (
+            {mainCategories.slice(0, 6).map((category, index) => (
               <motion.div
                 key={category._id}
                 initial={{ opacity: 0, y: 24 }}

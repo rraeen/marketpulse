@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -8,9 +8,11 @@ import { Container } from "@/components/ui/container";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { validateEmail } from "@/lib/utils/validation";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -18,6 +20,18 @@ export default function LoginPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+
+  // Redirect authenticated users away from login page
+  useEffect(() => {
+    if (!authLoading && user) {
+      // Redirect based on user role
+      if (user.role === "Admin") {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
+    }
+  }, [user, authLoading, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -83,6 +97,24 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center py-12 md:py-16">
+        <Container>
+          <div className="max-w-md mx-auto text-center">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </Container>
+      </div>
+    );
+  }
+
+  // Don't render login form if user is already authenticated (redirect will happen)
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="flex-1 flex items-center justify-center py-12 md:py-16">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { toggleTrending, getPostById } from '@/lib/services/post';
 import { isValidObjectId } from '@/lib/utils/objectid-validation';
+import { requireCsrfToken } from '@/lib/utils/csrf';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -8,6 +9,14 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
   const { id } = await params;
 
   if (!isValidObjectId(id)) {

@@ -14,6 +14,7 @@ import { TrendingToggle } from "@/components/admin/trending-toggle";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Loader2, Upload, X } from "lucide-react";
 import { use } from "react";
+import { fetchWithCsrf } from "@/lib/utils/fetch-with-csrf";
 
 interface PostFormData {
   title: string;
@@ -143,8 +144,16 @@ export default function EditPostPage({
       const formData = new FormData();
       formData.append("file", file);
 
+      // Get CSRF token for the request
+      const csrfRes = await fetch("/api/csrf-token");
+      const csrfData = await csrfRes.json();
+      const csrfToken = csrfData.token;
+
       const res = await fetch("/api/admin/upload", {
         method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+        },
         body: formData,
       });
 
@@ -211,7 +220,7 @@ export default function EditPostPage({
         hasBody: !!formData.body,
       });
 
-      const res = await fetch(url, {
+      const res = await fetchWithCsrf(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -364,7 +373,11 @@ export default function EditPostPage({
                     alt="Featured"
                     fill
                     className="object-cover"
-                    unoptimized={formData.featuredImageUrl.startsWith('data:')}
+                    unoptimized={
+                      formData.featuredImageUrl.startsWith("data:") ||
+                      formData.featuredImageUrl.includes(".r2.cloudflarestorage.com") ||
+                      formData.featuredImageUrl.includes(".r2.dev")
+                    }
                   />
                   <button
                     type="button"

@@ -11,6 +11,7 @@ import { Category, CategoryTree } from "@/lib/types/category";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { fetchWithCsrf } from "@/lib/utils/fetch-with-csrf";
 
 export default function AdminCategoriesPage() {
   const router = useRouter();
@@ -119,7 +120,7 @@ export default function AdminCategoriesPage() {
     setServerError("");
 
     try {
-      const res = await fetch("/api/admin/categories", {
+      const res = await fetchWithCsrf("/api/admin/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -152,7 +153,7 @@ export default function AdminCategoriesPage() {
     setServerError("");
 
     try {
-      const res = await fetch(`/api/admin/categories/${editingCategory._id}`, {
+      const res = await fetchWithCsrf(`/api/admin/categories/${editingCategory._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -183,7 +184,7 @@ export default function AdminCategoriesPage() {
     setIsSaving(true);
 
     try {
-      const res = await fetch(`/api/admin/categories/${deletingCategory._id}`, {
+      const res = await fetchWithCsrf(`/api/admin/categories/${deletingCategory._id}`, {
         method: "DELETE",
       });
 
@@ -219,7 +220,7 @@ export default function AdminCategoriesPage() {
     [reordered[currentIndex], reordered[newIndex]] = [reordered[newIndex], reordered[currentIndex]];
 
     try {
-      const res = await fetch("/api/admin/categories/reorder", {
+      const res = await fetchWithCsrf("/api/admin/categories/reorder", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

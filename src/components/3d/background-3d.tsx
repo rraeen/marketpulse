@@ -1,72 +1,84 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { RotatingDowel } from "./rotating-dowel";
 
-function LoadingFallback() {
+/**
+ * Static gradient fallback - default background
+ * This is what users see by default for better performance
+ */
+function StaticGradient() {
   return (
     <div className="fixed inset-0 -z-10 bg-gradient-to-br from-background via-background to-muted/20" />
   );
 }
 
+/**
+ * Background3D Component
+ * 
+ * Defaults to static gradient for performance.
+ * Only enables 3D WebGL rendering on:
+ * - Desktop devices (non-mobile)
+ * - After 2 seconds of idle time
+ * - When WebGL is supported
+ * - When user hasn't requested reduced motion
+ */
 export function Background3D() {
-  const [isMobile, setIsMobile] = useState(true); // Start as true to prevent hydration issues
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [shouldRender3D, setShouldRender3D] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [webGLSupported, setWebGLSupported] = useState(false);
+  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
     
-    // Check WebGL support
-    const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-    setWebGLSupported(!!gl);
-    
-    // Check if mobile
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    // Check if 3D should be enabled
+    const check3DSupport = () => {
+      // Check WebGL support
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      const webGLSupported = !!gl;
+      
+      // Check for reduced motion preference
+      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      const prefersReducedMotion = mediaQuery.matches;
+      
+      // Check if mobile (desktop only)
+      const isMobile = window.innerWidth < 768;
+      
+      // Only enable 3D on desktop, with WebGL, and no reduced motion preference
+      if (!isMobile && webGLSupported && !prefersReducedMotion) {
+        // Wait for idle period (2 seconds) before enabling 3D
+        idleTimeoutRef.current = setTimeout(() => {
+          setShouldRender3D(true);
+        }, 2000);
+      }
+      
+      return () => {
+        if (idleTimeoutRef.current) {
+          clearTimeout(idleTimeoutRef.current);
+        }
+      };
     };
     
-    // Check for reduced motion preference
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setPrefersReducedMotion(mediaQuery.matches);
-
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
+    const cleanup = check3DSupport();
     
-    const handleChange = (e: MediaQueryListEvent) => {
-      setPrefersReducedMotion(e.matches);
-    };
-    mediaQuery.addEventListener("change", handleChange);
-
     return () => {
-      window.removeEventListener("resize", checkMobile);
-      mediaQuery.removeEventListener("change", handleChange);
+      cleanup();
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
     };
   }, []);
 
-  // Debug logging effect - must be before any conditional returns
-  useEffect(() => {
-    if (mounted) {
-      if (prefersReducedMotion || !webGLSupported) {
-        console.log("3D disabled:", { prefersReducedMotion, webGLSupported, isMobile });
-      } else {
-        console.log("Background3D rendering:", { isMobile, prefersReducedMotion, webGLSupported, mounted });
-      }
-    }
-  }, [isMobile, prefersReducedMotion, webGLSupported, mounted]);
-
   // Don't render until mounted to prevent hydration issues
   if (!mounted) {
-    return <LoadingFallback />;
+    return <StaticGradient />;
   }
 
-  // Temporarily allow rendering to debug - only block if WebGL is not supported or reduced motion
-  // TODO: Re-enable mobile check after debugging
-  if (prefersReducedMotion || !webGLSupported) {
-    return <LoadingFallback />;
+  // Default to static gradient - 3D only enabled after idle on desktop
+  if (!shouldRender3D) {
+    return <StaticGradient />;
   }
 
   return (
@@ -94,14 +106,10 @@ export function Background3D() {
           powerPreference: "high-performance",
         }}
         style={{ 
-          background: "rgba(0, 0, 0, 0.01)", // Slightly visible for debugging
+          background: "transparent",
           width: "100%", 
           height: "100%",
           display: "block",
-        }}
-        onCreated={(state) => {
-          console.log("Canvas created:", state);
-          console.log("Camera position:", state.camera.position);
         }}
       >
         <Suspense fallback={null}>

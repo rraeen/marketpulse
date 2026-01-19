@@ -21,7 +21,7 @@ const JWT_SECRET = new TextEncoder().encode(getJwtSecret());
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect Admin Routes
+  // Protect Admin API Routes
   if (pathname.startsWith('/api/admin')) {
     const token = request.cookies.get('session')?.value;
 
@@ -36,6 +36,31 @@ export default async function proxy(request: NextRequest) {
       }
     } catch {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    }
+  }
+
+  // Protect Admin Pages (not just API)
+  if (pathname.startsWith('/admin')) {
+    const token = request.cookies.get('session')?.value;
+
+    if (!token) {
+      // Redirect to login with return URL
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      if (payload.role !== 'Admin') {
+        // Redirect non-admin users to home
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    } catch {
+      // Invalid token, redirect to login
+      const loginUrl = new URL('/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
@@ -56,5 +81,9 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/admin/:path*', '/api/profile/:path*'],
+  matcher: [
+    '/api/admin/:path*',
+    '/api/profile/:path*',
+    '/admin/:path*', // Protect admin pages
+  ],
 };

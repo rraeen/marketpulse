@@ -9,6 +9,7 @@ export interface User {
   isPremiumInterested: boolean;
   emailVerified: boolean;
   verificationStatus: 'Pending' | 'Verified';
+  sessionVersion?: number; // Incremented to revoke all sessions
   createdAt: Date;
   updatedAt?: Date;
 }

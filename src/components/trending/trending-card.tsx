@@ -58,7 +58,11 @@ export const TrendingCard = memo(function TrendingCard({
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-110"
               sizes="(max-width: 768px) 100vw, 400px"
-              unoptimized={featuredImageUrl.startsWith('data:')}
+              unoptimized={
+                featuredImageUrl.startsWith("data:") ||
+                featuredImageUrl.includes(".r2.cloudflarestorage.com") ||
+                featuredImageUrl.includes(".r2.dev")
+              }
               priority={index === 0}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10" />

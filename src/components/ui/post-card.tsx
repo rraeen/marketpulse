@@ -61,7 +61,11 @@ export const PostCard = memo(function PostCard({
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              unoptimized={featuredImageUrl.startsWith('data:')}
+              unoptimized={
+                featuredImageUrl.startsWith("data:") ||
+                featuredImageUrl.includes(".r2.cloudflarestorage.com") ||
+                featuredImageUrl.includes(".r2.dev")
+              }
               priority={index < 3}
             />
           </div>

@@ -8,6 +8,7 @@ import {
 import { isValidObjectId } from "@/lib/utils/objectid-validation";
 import { serializePost } from "@/lib/utils/serialize";
 import { ObjectId } from 'mongodb';
+import { requireCsrfToken } from '@/lib/utils/csrf';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -83,6 +84,15 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
+
   let { id } = await params;
   
   // Trim whitespace and decode URL encoding
@@ -169,6 +179,15 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
+
   let { id } = await params;
   
   // Trim whitespace and decode URL encoding

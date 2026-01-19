@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Star, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { useToast } from "@/components/ui/toast";
+import { fetchWithCsrf } from "@/lib/utils/fetch-with-csrf";
 
 interface TrendingToggleProps {
   postId: string;
@@ -32,7 +33,7 @@ export function TrendingToggle({
     setIsTrending(newValue);
 
     try {
-      const response = await fetch(`/api/admin/posts/${postId}/trending`, {
+      const response = await fetchWithCsrf(`/api/admin/posts/${postId}/trending`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isTrending: newValue }),

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllCategories, createCategory } from '@/lib/services/category';
 import { ObjectId } from 'mongodb';
+import { requireCsrfToken } from '@/lib/utils/csrf';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -18,6 +19,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
+
   try {
     const { name, parentId } = await request.json();
 

@@ -4,6 +4,7 @@ import { createPost, getPosts, isValidStatus } from '@/lib/services/post';
 import { serializePost, serializePosts } from '@/lib/utils/serialize';
 import { ObjectId } from 'mongodb';
 import { isValidObjectId } from '@/lib/utils/objectid-validation';
+import { requireCsrfToken } from '@/lib/utils/csrf';
 
 // Note: Admin authorization is handled by proxy for /api/admin/* routes
 
@@ -27,6 +28,15 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
+
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

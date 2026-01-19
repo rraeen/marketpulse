@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Loader2, Check } from "lucide-react";
+import { fetchWithCsrf } from "@/lib/utils/fetch-with-csrf";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function ProfilePage() {
     setIsSaving(true);
 
     try {
-      const res = await fetch("/api/profile", {
+      const res = await fetchWithCsrf("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPremiumInterested: newValue }),

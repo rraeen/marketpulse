@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth-helper';
 import { getDb } from '@/lib/db';
 import { ObjectId } from 'mongodb';
+import { requireCsrfToken } from '@/lib/utils/csrf';
 
 export async function GET() {
   const user = await getSessionUser();
@@ -13,6 +14,15 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
+  // CSRF protection
+  const csrfCheck = await requireCsrfToken(request);
+  if (!csrfCheck.valid) {
+    return NextResponse.json(
+      { error: csrfCheck.error || 'CSRF validation failed' },
+      { status: 403 }
+    );
+  }
+
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

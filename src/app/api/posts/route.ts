@@ -55,22 +55,29 @@ export async function GET(request: Request) {
           { page, limit }
         );
 
-        return NextResponse.json({
-          posts,
-          category: {
-            _id: category._id,
-            name: category.name,
-            slug: category.slug,
+        return NextResponse.json(
+          {
+            posts,
+            category: {
+              _id: category._id,
+              name: category.name,
+              slug: category.slug,
+            },
+            subcategory: {
+              _id: subcategory._id,
+              name: subcategory.name,
+              slug: subcategory.slug,
+            },
+            total,
+            page,
+            totalPages: Math.ceil(total / limit),
           },
-          subcategory: {
-            _id: subcategory._id,
-            name: subcategory.name,
-            slug: subcategory.slug,
-          },
-          total,
-          page,
-          totalPages: Math.ceil(total / limit),
-        });
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+            },
+          }
+        );
       }
 
       // Get posts from category + all subcategories
@@ -80,23 +87,34 @@ export async function GET(request: Request) {
         { page, limit }
       );
 
-      return NextResponse.json({
-        posts,
-        category: {
-          _id: category._id,
-          name: category.name,
-          slug: category.slug,
+      return NextResponse.json(
+        {
+          posts,
+          category: {
+            _id: category._id,
+            name: category.name,
+            slug: category.slug,
+          },
+          total,
+          page,
+          totalPages: Math.ceil(total / limit),
         },
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-      });
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+          },
+        }
+      );
     }
 
     // No category filter - return all published posts
     const filter: Filter<Post> = { status: 'Published' as const };
     const result = await getPosts(filter, { page, limit });
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+      },
+    });
   } catch (error) {
     console.error('Public get posts error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

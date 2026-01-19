@@ -29,29 +29,43 @@ export async function GET(request: Request) {
     // Get trending posts
     const trendingPosts = await getTrendingPosts(limit, categoryId ?? undefined);
 
-    // Populate category information for each post
-    const postsWithCategories = await Promise.all(
-      trendingPosts.map(async (post) => {
-        const category = await getCategoryById(post.categoryId.toString());
-        
-        return {
-          _id: post._id,
-          title: post.title,
-          featuredImageUrl: post.featuredImageUrl,
-          category: category ? {
+    // Fix N+1 query: Batch fetch all unique category IDs
+    const uniqueCategoryIds = [...new Set(trendingPosts.map(p => p.categoryId.toString()))];
+    const categoriesMap = new Map();
+    
+    await Promise.all(
+      uniqueCategoryIds.map(async (catId) => {
+        const category = await getCategoryById(catId);
+        if (category) {
+          categoriesMap.set(catId, {
             _id: category._id,
             name: category.name,
             slug: category.slug,
-          } : null,
-          createdAt: post.createdAt,
-        };
+          });
+        }
       })
     );
 
-    return NextResponse.json({
-      trending: postsWithCategories,
-      total: postsWithCategories.length,
-    });
+    // Map posts with categories from the batch-fetched map
+    const postsWithCategories = trendingPosts.map((post) => ({
+      _id: post._id,
+      title: post.title,
+      featuredImageUrl: post.featuredImageUrl,
+      category: categoriesMap.get(post.categoryId.toString()) || null,
+      createdAt: post.createdAt,
+    }));
+
+    return NextResponse.json(
+      {
+        trending: postsWithCategories,
+        total: postsWithCategories.length,
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (error) {
     console.error('Get trending posts error:', error);
     return NextResponse.json(

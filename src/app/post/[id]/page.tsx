@@ -161,6 +161,11 @@ export default async function PostDetailPage({
                 className="object-cover"
                 priority
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 896px"
+                unoptimized={
+                  post.featuredImageUrl.startsWith("data:") ||
+                  post.featuredImageUrl.includes(".r2.cloudflarestorage.com") ||
+                  post.featuredImageUrl.includes(".r2.dev")
+                }
               />
             </div>
           )}

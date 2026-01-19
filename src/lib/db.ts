@@ -1,5 +1,4 @@
 import { MongoClient } from "mongodb";
-import { ensureCollectionSchemas } from "./schemas/validation";
 
 const uri = process.env.MONGODB_URI;
 
@@ -32,47 +31,15 @@ if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
 
 export default clientPromise;
 
-let indexesEnsured = false;
-let schemasEnsured = false;
-
+/**
+ * Get database instance.
+ * 
+ * NOTE: Schema validation and indexes should be set up via:
+ *   npm run init:db
+ * 
+ * This is done at deployment time, not on every request.
+ */
 export async function getDb() {
   const client = await clientPromise;
-  const db = client.db();
-
-  // Apply MongoDB schema validation (once per server start)
-  if (!schemasEnsured) {
-    await ensureCollectionSchemas(db);
-    schemasEnsured = true;
-  }
-
-  // Create indexes (once per server start)
-  if (!indexesEnsured) {
-    // User indexes
-    await db.collection("users").createIndex({ email: 1 }, { unique: true });
-    
-    // Post indexes
-    await db.collection("posts").createIndex({ title: "text", body: "text" });
-    await db.collection("posts").createIndex({ status: 1 });
-    await db.collection("posts").createIndex({ categoryId: 1 });
-    await db.collection("posts").createIndex({ status: 1, createdAt: -1 }); // Feed queries
-    await db.collection("posts").createIndex({ categoryId: 1, status: 1, createdAt: -1 }); // Category feeds
-    await db.collection("posts").createIndex({ isTrending: 1, status: 1, createdAt: -1 }); // Trending queries
-    
-    // Category indexes
-    await db.collection("categories").createIndex({ slug: 1 }, { unique: true });
-    await db.collection("categories").createIndex({ parentId: 1 });
-    await db.collection("categories").createIndex({ order: 1 });
-    await db.collection("categories").createIndex({ isActive: 1 });
-    await db.collection("categories").createIndex({ parentId: 1, isActive: 1, order: 1 }); // Tree queries
-    
-    // OTP verification indexes
-    await db.collection("otp_verifications").createIndex({ email: 1 });
-    await db.collection("otp_verifications").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
-    await db.collection("otp_verifications").createIndex({ email: 1, purpose: 1, isUsed: 1 });
-    await db.collection("otp_verifications").createIndex({ createdAt: 1 });
-    
-    indexesEnsured = true;
-  }
-
-  return db;
+  return client.db();
 }

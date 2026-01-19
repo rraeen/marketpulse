@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "seed:admin": "ts-node scripts/seed-admin.ts",
+    "init:db": "ts-node scripts/init-db.ts",
     "migrate:trending": "ts-node scripts/migrate-trending.ts",
+    "migrate:session-version": "ts-node scripts/migrate-session-version.ts",
+    "clear:rate-limits": "ts-node scripts/clear-rate-limits.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -17,6 +20,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.971.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@types/dompurify": "^3.0.5",

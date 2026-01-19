@@ -1,7 +1,7 @@
 import { getDb } from '../db';
 import { Post } from '../models/post';
 import { ObjectId, type Filter } from 'mongodb';
-import { notifyUsersOfNewPost } from './notification';
+import { enqueueNotificationJob } from './notification-job';
 import { getCategoryById } from './category';
 
 /**
@@ -97,9 +97,9 @@ export async function createPost(data: Omit<Post, '_id' | 'createdAt' | 'updated
   const result = await postsCollection.insertOne(newPost);
   newPost._id = result.insertedId;
 
-  // Trigger notification if created with Published status
+  // Enqueue notification job if post is published immediately
   if (newPost.status === 'Published') {
-    notifyUsersOfNewPost(newPost._id as ObjectId, newPost.title).catch(console.error);
+    await enqueueNotificationJob(newPost._id as ObjectId, newPost.title);
   }
 
   return newPost;
@@ -118,7 +118,6 @@ export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'c
   }
 
   const trimmedId = id.trim();
-  console.log("updatePost - ID:", trimmedId, "Data keys:", Object.keys(data), "Status:", data.status);
 
   try {
     const objectId = new ObjectId(trimmedId);
@@ -127,15 +126,11 @@ export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'c
     const oldPost = await postsCollection.findOne({ _id: objectId });
     
     if (!oldPost) {
-      console.error("updatePost - Post not found for ID:", trimmedId);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("updatePost - Post not found for ID:", trimmedId);
+      }
       return null;
     }
-
-    console.log("updatePost - Found old post:", {
-      id: oldPost._id?.toString(),
-      oldStatus: oldPost.status,
-      newStatus: data.status,
-    });
 
     // Use updateOne which is more reliable - it returns modifiedCount
     const updateResult = await postsCollection.updateOne(
@@ -150,13 +145,14 @@ export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'c
 
     // Check if the update actually modified a document
     if (updateResult.modifiedCount === 0 && updateResult.matchedCount === 0) {
-      console.error("updatePost - Post not found during update:", trimmedId);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("updatePost - Post not found during update:", trimmedId);
+      }
       return null;
     }
 
     if (updateResult.modifiedCount === 0) {
       // Post was found but no changes were made (data might be the same)
-      console.log("updatePost - Post found but no changes made (data unchanged):", trimmedId);
       // Still return the post since the operation succeeded
       return oldPost;
     }
@@ -166,24 +162,25 @@ export async function updatePost(id: string, data: Partial<Omit<Post, '_id' | 'c
     
     if (!updatedPost) {
       // This shouldn't happen, but handle it
-      console.error("updatePost - Update succeeded but couldn't fetch updated post:", trimmedId);
+      if (process.env.NODE_ENV !== "production") {
+        console.error("updatePost - Update succeeded but couldn't fetch updated post:", trimmedId);
+      }
       return null;
     }
 
-    console.log("updatePost - Successfully updated:", {
-      id: updatedPost._id?.toString(),
-      status: updatedPost.status,
-      modifiedCount: updateResult.modifiedCount,
-    });
-
-    // Trigger notification if status changed from Draft to Published
-    if (data.status === 'Published' && updatedPost) {
-      notifyUsersOfNewPost(updatedPost._id as ObjectId, updatedPost.title).catch(console.error);
+    // Enqueue notification job if status changed from Draft to Published
+    if (oldPost.status === 'Draft' && data.status === 'Published' && updatedPost) {
+      await enqueueNotificationJob(updatedPost._id as ObjectId, updatedPost.title);
     }
 
     return updatedPost;
   } catch (error) {
-    console.error("updatePost - Error:", error);
+    // Always log errors, but don't expose sensitive details in production
+    if (process.env.NODE_ENV !== "production") {
+      console.error("updatePost - Error:", error);
+    } else {
+      console.error("updatePost - Error occurred");
+    }
     throw error;
   }
 }
@@ -306,7 +303,6 @@ export async function deletePost(id: string) {
   const postsCollection = db.collection<Post>('posts');
 
   const trimmedId = id.trim();
-  console.log("deletePost - ID:", trimmedId);
 
   try {
     const objectId = new ObjectId(trimmedId);

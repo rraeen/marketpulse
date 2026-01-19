@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
+import { ObjectId } from 'mongodb';
 import { getDb } from '../db';
 import { User } from '../models/user';
 
@@ -87,10 +88,14 @@ export async function loginUser(email: string, password: string) {
 
 
 
+  // Get current session version (default to 0 if not set)
+  const sessionVersion = user.sessionVersion || 0;
+
   const token = await new SignJWT({
     userId: user._id?.toString(),
     email: user.email,
     role: user.role,
+    sessionVersion, // Include session version in token
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -149,22 +154,63 @@ export async function resetUserPassword(email: string, newPassword: string): Pro
         verificationStatus: 'Verified',
         updatedAt: new Date(),
       },
+      $inc: { sessionVersion: 1 }, // Revoke all sessions after password reset
     }
   );
-
-  // TODO: Invalidate all active sessions/tokens for this user
-  // This would require a token blacklist or session management system
 }
 
 export async function verifyToken(token: string) {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
+    const userId = payload.userId as string;
+    const tokenSessionVersion = (payload.sessionVersion as number) ?? 0;
+    
+    // Check session version against database
+    const db = await getDb();
+    const user = await db.collection<User>('users').findOne(
+      { _id: new ObjectId(userId) },
+      { projection: { sessionVersion: 1 } }
+    );
+    
+    if (!user) {
+      return null; // User doesn't exist
+    }
+    
+    // If session version doesn't match, token is revoked
+    // Handle undefined/null sessionVersion for existing users
+    const userSessionVersion = user.sessionVersion ?? 0;
+    if (tokenSessionVersion !== userSessionVersion) {
+      return null; // Session revoked
+    }
+    
     return {
-      userId: payload.userId as string,
+      userId,
       email: payload.email as string,
       role: payload.role as string,
+      sessionVersion: tokenSessionVersion,
     };
-  } catch {
+  } catch (error) {
+    // Log error in development for debugging
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Token verification error:', error);
+    }
     return null;
   }
+}
+
+/**
+ * Revokes all sessions for a user by incrementing sessionVersion
+ * This invalidates all existing JWT tokens for the user
+ */
+export async function revokeUserSessions(userId: string): Promise<void> {
+  const db = await getDb();
+  const usersCollection = db.collection<User>('users');
+  
+  await usersCollection.updateOne(
+    { _id: new ObjectId(userId) },
+    {
+      $inc: { sessionVersion: 1 },
+      $set: { updatedAt: new Date() },
+    }
+  );
 }
