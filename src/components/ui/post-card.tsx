@@ -12,7 +12,7 @@ interface PostCardProps {
   title: string;
   body: string;
   featuredImageUrl?: string;
-  categoryId: string;
+  categoryName?: string;
   publishedAt: string;
   index?: number;
 }
@@ -22,7 +22,7 @@ export const PostCard = memo(function PostCard({
   title,
   body,
   featuredImageUrl,
-  categoryId,
+  categoryName,
   publishedAt,
   index = 0,
 }: PostCardProps) {
@@ -50,7 +50,7 @@ export const PostCard = memo(function PostCard({
     >
       <Link
         href={`/post/${id}`}
-        className="group block bg-background border border-border rounded-lg overflow-hidden transition-all hover:border-foreground/30 hover:shadow-lg hover:-translate-y-1"
+        className="group block bg-background border border-border rounded-lg overflow-hidden transition-all hover:border-foreground/20 hover:shadow-md"
       >
         {/* Featured Image */}
         {featuredImageUrl && (
@@ -75,7 +75,7 @@ export const PostCard = memo(function PostCard({
         <div className="p-6">
           {/* Category Badge */}
           <div className="inline-block px-3 py-1 mb-3 text-xs font-medium bg-accent text-accent-foreground rounded-full">
-            {categoryId}
+            {categoryName || "Uncategorized"}
           </div>
 
           {/* Title */}

@@ -15,7 +15,12 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground" aria-label="Toggle theme">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
+        aria-label="Toggle theme"
+      >
         <Sun className="h-4 w-4" />
       </Button>
     );
@@ -25,7 +30,7 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="sm"
-      className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+      className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       aria-label="Toggle theme"
     >

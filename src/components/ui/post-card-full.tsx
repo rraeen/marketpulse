@@ -11,7 +11,7 @@ interface PostCardFullProps {
   title: string;
   body: string;
   featuredImageUrl?: string;
-  categoryId: string;
+  categoryName?: string;
   publishedAt: string;
   index?: number;
 }
@@ -21,7 +21,7 @@ export const PostCardFull = memo(function PostCardFull({
   title,
   body,
   featuredImageUrl,
-  categoryId,
+  categoryName,
   publishedAt,
   index = 0,
 }: PostCardFullProps) {
@@ -53,7 +53,7 @@ export const PostCardFull = memo(function PostCardFull({
     >
       <Link
         href={`/post/${id}`}
-        className="group block bg-background border border-border rounded-lg overflow-hidden transition-all hover:border-foreground/30 hover:shadow-lg"
+        className="group block bg-background border border-border rounded-lg overflow-hidden transition-all hover:border-foreground/20 hover:shadow-md"
       >
         {/* Featured Image - Full Width */}
         {featuredImageUrl && (
@@ -79,7 +79,7 @@ export const PostCardFull = memo(function PostCardFull({
           {/* Category Badge & Date */}
           <div className="flex items-center gap-3 mb-4">
             <span className="inline-block px-3 py-1 text-xs font-medium bg-accent text-accent-foreground rounded-full">
-              {categoryId}
+              {categoryName || "Uncategorized"}
             </span>
             <div className="flex items-center text-xs text-muted-foreground">
               <Calendar className="h-3.5 w-3.5 mr-1.5" />

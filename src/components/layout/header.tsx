@@ -15,7 +15,6 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { CategoryTree } from "@/lib/types/category";
 import { cn } from "@/lib/utils/cn";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { useTheme } from "next-themes";
 
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -29,7 +28,6 @@ export function Header() {
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const { user, logout } = useAuth();
-  const { theme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -143,13 +141,10 @@ export function Header() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b border-gray-200/30 dark:border-gray-800/30 transition-all duration-300",
-        "navbar-light-mode",
-        isScrolled && "backdrop-blur-md shadow-sm"
+        "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
+        "bg-[var(--navbar-bg)] border-border/50",
+        isScrolled && "bg-[var(--navbar-bg-scrolled)] backdrop-blur-md shadow-sm"
       )}
-      style={{ 
-        backgroundColor: mounted && theme !== "dark" ? (isScrolled ? "rgba(22, 33, 62, 0.95)" : "#16213e") : undefined
-      } as React.CSSProperties}
     >
       {/* 
         IMPORTANT:
@@ -331,7 +326,11 @@ export function Header() {
           {/* Actions */}
           <div className="flex items-center gap-2 ml-auto">
             {/* Theme Toggle - Admin Only */}
-            {user?.role === "Admin" && <ThemeToggle />}
+            {user?.role === "Admin" && (
+              <div className="hidden md:block">
+                <ThemeToggle />
+              </div>
+            )}
             
             {/* Auth Buttons - Desktop */}
             <div className="hidden md:flex items-center gap-2">
@@ -339,14 +338,14 @@ export function Header() {
                 <>
                   {user.role === "Admin" && (
                     <Link href="/admin">
-                      <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
+                      <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900">
                         <Settings className="h-4 w-4" />
                         Settings
                       </Button>
                     </Link>
                   )}
                   <Link href="/profile">
-                    <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900">
                       <User className="h-4 w-4" />
                       {user.name}
                     </Button>
@@ -354,7 +353,7 @@ export function Header() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                    className="bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
                     onClick={logout}
                   >
                     <LogOut className="h-4 w-4" />
@@ -366,7 +365,7 @@ export function Header() {
                   <Link href="/login" className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground">
                     Sign In
                   </Link>
-                  <span className="text-red-500 dark:text-red-400">/</span>
+                  <span className="text-muted-foreground">/</span>
                   <Link href="/register" className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground">
                     Sign Up
                   </Link>
@@ -474,7 +473,11 @@ export function Header() {
                           >
                             <div className="flex items-center gap-2">
                               {hasSubcategories && (
-                                <button onClick={() => toggleExpand(category._id)} className="p-1">
+                                <button
+                                  onClick={() => toggleExpand(category._id)}
+                                  className="p-2 -ml-1"
+                                  aria-label={`Toggle ${category.name} subcategories`}
+                                >
                                   <ChevronDown
                                     className={cn(
                                       "h-4 w-4 transition-transform",
@@ -540,7 +543,7 @@ export function Header() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                                className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
                               >
                                 <Settings className="h-4 w-4" />
                                 Settings
@@ -551,7 +554,7 @@ export function Header() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                              className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
                             >
                               <User className="h-4 w-4" />
                               Profile
@@ -560,7 +563,7 @@ export function Header() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                            className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-slate-900"
                             onClick={() => {
                               setIsMobileMenuOpen(false);
                               logout();
@@ -580,7 +583,7 @@ export function Header() {
                             >
                               Sign In
                             </Link>
-                            <span className="text-red-500 dark:text-red-400">/</span>
+                            <span className="text-muted-foreground">/</span>
                             <Link
                               href="/register"
                               onClick={() => setIsMobileMenuOpen(false)}

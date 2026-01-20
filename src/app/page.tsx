@@ -6,6 +6,7 @@ import { motion, Variants } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, TrendingUp, ShieldCheck, BarChart3 } from "lucide-react";
 import { Container } from "@/components/ui/container";
+import { Button } from "@/components/ui/button";
 import { CategoryTree } from "@/lib/types/category";
 import { StockCharts } from "@/components/home/stock-charts";
 import { ValueCardsCarousel } from "@/components/home/value-cards-carousel";
@@ -118,21 +119,17 @@ export default function Home() {
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
               {firstCategory && (
-                <Link
-                  href={`/category/${firstCategory.slug}`}
-                  className="group inline-flex items-center gap-2 px-8 py-4 bg-foreground text-background rounded-md font-medium transition-all hover:scale-[1.03] active:scale-[0.98]"
-                >
-                  Explore Insights
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
+                <Button asChild size="lg" className="px-8 group">
+                  <Link href={`/category/${firstCategory.slug}`}>
+                    Explore Insights
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </Button>
               )}
 
-              <Link
-                href="#categories"
-                className="inline-flex items-center px-8 py-4 border border-border rounded-md font-medium transition hover:bg-accent"
-              >
-                Browse Categories
-              </Link>
+              <Button asChild variant="outline" size="lg" className="px-8">
+                <Link href="#categories">Browse Categories</Link>
+              </Button>
             </motion.div>
 
             {/* Trust Strip */}
@@ -190,7 +187,7 @@ export default function Home() {
               >
                 <Link
                   href={`/category/${category.slug}`}
-                  className="group block p-6 bg-background border border-border rounded-md transition-all hover:-translate-y-1 hover:shadow-xl hover:bg-accent/40"
+                  className="group block p-6 bg-background border border-border rounded-lg transition-all hover:shadow-md hover:border-foreground/20 hover:bg-accent/30"
                 >
                   <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />

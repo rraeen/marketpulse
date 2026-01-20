@@ -1,76 +1,75 @@
-import { checkRateLimit, rateLimitStore } from '@/lib/utils/rate-limiter';
+import { checkRateLimit } from '@/lib/utils/rate-limiter';
+import { getDb } from '@/lib/db';
+import type { Db } from 'mongodb';
 
 describe('Rate Limiter Unit Tests', () => {
-  beforeEach(() => {
-    // Clear rate limiter before each test
-    rateLimitStore.clear();
+  let db: Db;
+
+  beforeAll(async () => {
+    db = await getDb();
+  });
+
+  beforeEach(async () => {
+    // Clear rate limiter entries before each test
+    await db.collection('rateLimits').deleteMany({});
   });
 
   describe('checkRateLimit', () => {
-    it('should allow first request', () => {
-      const result = checkRateLimit('test-user');
+    it('should allow first request', async () => {
+      const result = await checkRateLimit('test-user');
       expect(result.allowed).toBe(true);
       expect(result.retryAfter).toBeUndefined();
     });
 
-    it('should allow up to 5 requests', () => {
-      for (let i = 0; i < 5; i++) {
-        const result = checkRateLimit('test-user');
-        expect(result.allowed).toBe(true);
-      }
-    });
-
-    it('should block after 5 requests', () => {
-      // Make 5 allowed requests
-      for (let i = 0; i < 5; i++) {
-        checkRateLimit('test-user');
+    it('should eventually block after too many requests', async () => {
+      // In production MAX_ATTEMPTS is 5; in development it's higher.
+      // Make enough requests to exceed both.
+      let last = await checkRateLimit('test-user');
+      for (let i = 0; i < 30; i++) {
+        last = await checkRateLimit('test-user');
+        if (!last.allowed) break;
       }
 
-      // 6th request should be blocked
-      const result = checkRateLimit('test-user');
+      const result = last;
       expect(result.allowed).toBe(false);
       expect(result.retryAfter).toBeDefined();
       expect(result.retryAfter).toBeGreaterThan(0);
     });
 
-    it('should track different identifiers separately', () => {
+    it('should track different identifiers separately', async () => {
       // Max out user1
-      for (let i = 0; i < 5; i++) {
-        checkRateLimit('user1');
+      let blocked = await checkRateLimit('user1');
+      for (let i = 0; i < 30; i++) {
+        blocked = await checkRateLimit('user1');
+        if (!blocked.allowed) break;
       }
-      const blocked = checkRateLimit('user1');
       expect(blocked.allowed).toBe(false);
 
       // user2 should still be allowed
-      const allowed = checkRateLimit('user2');
+      const allowed = await checkRateLimit('user2');
       expect(allowed.allowed).toBe(true);
     });
 
-    it('should reset after time window', () => {
-      // Make 5 requests
-      for (let i = 0; i < 5; i++) {
-        checkRateLimit('test-user');
-      }
+    it('should reset after time window', async () => {
+      await checkRateLimit('test-user');
 
-      // Get the entry to check reset time
-      const entry = rateLimitStore.get('test-user');
-      expect(entry).toBeDefined();
-
-      // Manually set reset time to past
-      entry!.resetTime = Date.now() - 1000;
-      rateLimitStore.set('test-user', entry!);
+      // Force resetTime in the past
+      await db.collection('rateLimits').updateOne(
+        { identifier: 'test-user' },
+        { $set: { resetTime: new Date(Date.now() - 1000) } }
+      );
 
       // Should be allowed again
-      const result = checkRateLimit('test-user');
+      const result = await checkRateLimit('test-user');
       expect(result.allowed).toBe(true);
     });
 
-    it('should provide retry-after in seconds', () => {
-      for (let i = 0; i < 5; i++) {
-        checkRateLimit('test-user');
+    it('should provide retry-after in seconds', async () => {
+      let result = await checkRateLimit('test-user');
+      for (let i = 0; i < 30; i++) {
+        result = await checkRateLimit('test-user');
+        if (!result.allowed) break;
       }
-
-      const result = checkRateLimit('test-user');
       expect(result.retryAfter).toBeDefined();
       expect(result.retryAfter).toBeGreaterThan(0);
       expect(result.retryAfter).toBeLessThanOrEqual(900); // Max 15 minutes

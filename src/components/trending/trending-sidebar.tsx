@@ -94,7 +94,7 @@ export function TrendingSidebar({ limit = 5 }: TrendingSidebarProps) {
               <Link href="/trending" className="block">
                 <Button
                   variant="outline"
-                  className="w-full group border-yellow-400 hover:bg-yellow-400 hover:text-white transition-all"
+                  className="w-full group border-yellow-400 hover:bg-yellow-400 hover:text-slate-900 transition-all"
                 >
                   View All Trending
                   <ArrowRight className="h-4 w-4 ml-2 transition-transform group-hover:translate-x-1" />

@@ -23,7 +23,7 @@ describe('Auth Service Unit Tests', () => {
       expect(user.name).toBe('Test User');
       expect(user.role).toBe('User');
       expect(user.passwordHash).toBeDefined();
-      expect(user.passwordHash).not.toBe('Test@1234'); // Should be hashed
+      expect(user.passwordHash!).not.toBe('Test@1234'); // Should be hashed
     });
 
     it('should throw error for duplicate email', async () => {
@@ -40,9 +40,9 @@ describe('Auth Service Unit Tests', () => {
       const user = await registerUser('Test User', 'test@example.com', 'Test@1234');
 
       // Password should be hashed
-      expect(user.passwordHash).not.toBe('Test@1234');
-      expect(user.passwordHash.length).toBeGreaterThan(20);
-      expect(user.passwordHash).toMatch(/^\$2[ayb]\$.{56}$/); // bcrypt format
+      expect(user.passwordHash!).not.toBe('Test@1234');
+      expect(user.passwordHash!.length).toBeGreaterThan(20);
+      expect(user.passwordHash!).toMatch(/^\$2[ayb]\$.{56}$/); // bcrypt format
     });
 
     it('should set default role to User', async () => {
@@ -65,16 +65,22 @@ describe('Auth Service Unit Tests', () => {
     beforeEach(async () => {
       // Create a test user before each login test
       await registerUser('Test User', 'test@example.com', 'Test@1234');
+      // Login requires verified email for non-admin users
+      await db.collection('users').updateOne(
+        { email: 'test@example.com' },
+        { $set: { emailVerified: true, verificationStatus: 'Verified' } }
+      );
     });
 
     it('should login with valid credentials', async () => {
       const result = await loginUser('test@example.com', 'Test@1234');
 
       expect(result).toBeDefined();
-      expect(result.user).toBeDefined();
+      expect(result.safeUser).toBeDefined();
       expect(result.token).toBeDefined();
-      expect(result.user.email).toBe('test@example.com');
-      expect(result.user.passwordHash).toBeDefined();
+      expect(result.safeUser.email).toBe('test@example.com');
+      // passwordHash is intentionally excluded from safeUser
+      expect((result.safeUser as any).passwordHash).toBeUndefined();
     });
 
     it('should return a valid JWT token', async () => {

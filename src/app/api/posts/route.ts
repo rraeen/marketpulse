@@ -1,8 +1,30 @@
 import { NextResponse } from 'next/server';
 import { getPostsByCategory, getPosts } from '@/lib/services/post';
 import { getCategoryBySlug } from '@/lib/services/category';
-import type { Filter } from 'mongodb';
+import { ObjectId, type Filter } from 'mongodb';
 import type { Post } from '@/lib/models/post';
+import { getDb } from '@/lib/db';
+import type { Category } from '@/lib/models/category';
+
+async function attachCategoryNames(posts: Post[]) {
+  const db = await getDb();
+  const uniqueCategoryIds = Array.from(new Set(posts.map((p) => p.categoryId.toString()))).map(
+    (id) => new ObjectId(id)
+  );
+
+  const categories = await db
+    .collection<Category>('categories')
+    .find({ _id: { $in: uniqueCategoryIds } })
+    .project({ name: 1, slug: 1 })
+    .toArray();
+
+  const categoryNameById = new Map(categories.map((c) => [c._id!.toString(), c.name] as const));
+
+  return posts.map((p) => ({
+    ...p,
+    categoryName: categoryNameById.get(p.categoryId.toString()) || 'Uncategorized',
+  }));
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -57,7 +79,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json(
           {
-            posts,
+            posts: await attachCategoryNames(posts),
             category: {
               _id: category._id,
               name: category.name,
@@ -89,7 +111,7 @@ export async function GET(request: Request) {
 
       return NextResponse.json(
         {
-          posts,
+          posts: await attachCategoryNames(posts),
           category: {
             _id: category._id,
             name: category.name,
@@ -110,11 +132,25 @@ export async function GET(request: Request) {
     // No category filter - return all published posts
     const filter: Filter<Post> = { status: 'Published' as const };
     const result = await getPosts(filter, { page, limit });
-    return NextResponse.json(result, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+    if (Array.isArray(result)) {
+      return NextResponse.json(await attachCategoryNames(result), {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      });
+    }
+
+    return NextResponse.json(
+      {
+        ...result,
+        posts: await attachCategoryNames(result.posts),
       },
-    });
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
   } catch (error) {
     console.error('Public get posts error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

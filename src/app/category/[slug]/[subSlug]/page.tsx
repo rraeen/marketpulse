@@ -60,6 +60,7 @@ async function getSubcategoryPosts(categorySlug: string, subSlug: string) {
       body: post.body,
       featuredImageUrl: post.featuredImageUrl,
       categoryId: post.categoryId.toString(),
+      categoryName: subcategoryDb.name,
       updatedAt: post.updatedAt.toISOString(),
     }));
 
@@ -110,7 +111,7 @@ export default async function SubcategoryPage({
   const { posts, total, category, subcategory } = data;
 
   return (
-    <div className="flex-1 py-12 md:py-5">
+    <div className="flex-1 py-10 md:py-14">
       <Container>
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
@@ -129,7 +130,7 @@ export default async function SubcategoryPage({
         </nav>
 
         {/* Header */}
-        {/* <div className="mb-12">
+        <div className="mb-10">
           <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
             {subcategory.name}
           </h1>
@@ -139,7 +140,7 @@ export default async function SubcategoryPage({
           >
             In {category.name}
           </Link>
-        </div> */}
+        </div>
 
         {/* Main Content + Trending Sidebar Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

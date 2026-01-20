@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { CategoryPostsList } from "@/components/category/category-posts-list";
 import { TrendingSidebar } from "@/components/trending/trending-sidebar";
+import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { Category } from "@/lib/types/category";
 import { getPostsByCategory } from "@/lib/services/post";
@@ -10,6 +11,7 @@ import { getCategoryBySlug } from "@/lib/services/category";
 import { getDb } from "@/lib/db";
 import type { Category as DbCategory } from "@/lib/models/category";
 import type { Post as DbPost } from "@/lib/models/post";
+import { ObjectId } from "mongodb";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,21 @@ async function getCategoryPosts(categorySlug: string) {
       .find({ parentId: categoryDb._id, isActive: true })
       .sort({ name: 1 })
       .toArray();
+
+    // Build a map of categoryId -> category name for post badges
+    const uniqueCategoryIds = Array.from(
+      new Set(posts.map((p: DbPost) => p.categoryId.toString()))
+    ).map((id) => new ObjectId(id));
+
+    const categoriesForPosts = await db
+      .collection<DbCategory>("categories")
+      .find({ _id: { $in: uniqueCategoryIds } })
+      .project({ name: 1 })
+      .toArray();
+
+    const categoryNameById = new Map(
+      categoriesForPosts.map((c) => [c._id!.toString(), c.name] as const)
+    );
 
     const category: Category = {
       _id: categoryDb._id?.toString() || "",
@@ -60,6 +77,7 @@ async function getCategoryPosts(categorySlug: string) {
       body: post.body,
       featuredImageUrl: post.featuredImageUrl,
       categoryId: post.categoryId.toString(),
+      categoryName: categoryNameById.get(post.categoryId.toString()) || "Uncategorized",
       updatedAt: post.updatedAt.toISOString(),
     }));
 
@@ -111,7 +129,7 @@ export default async function CategoryPage({
   const subcategoriesList: Category[] = subcategories || [];
 
   return (
-    <div className="flex-1 py-12 md:py-5">
+    <div className="flex-1 py-10 md:py-14">
       <Container>
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
@@ -124,31 +142,24 @@ export default async function CategoryPage({
 
         {/* Header */}
         <div className="mb-8">
-          {/* <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
+          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
             {category.name}
-          </h1> */}
-          {/* <p className="text-muted-foreground text-lg mb-6">
+          </h1>
+          <p className="text-muted-foreground text-lg mb-6">
             Expert insights and analysis in {category.name.toLowerCase()}
-          </p> */}
+          </p>
 
           {/* Subcategory Filters */}
           {subcategoriesList.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-muted-foreground">Filter by:</span>
-              <Link
-                href={`/category/${slug}`}
-                className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-md hover:opacity-90 transition-all"
-              >
-                All
-              </Link>
+              <Button asChild size="sm">
+                <Link href={`/category/${slug}`}>All</Link>
+              </Button>
               {subcategoriesList.map((sub: Category) => (
-                <Link
-                  key={sub._id}
-                  href={`/category/${slug}/${sub.slug}`}
-                  className="px-4 py-2 text-sm font-medium bg-accent text-accent-foreground rounded-md hover:bg-foreground/10 transition-all"
-                >
-                  {sub.name}
-                </Link>
+                <Button key={sub._id} asChild variant="outline" size="sm">
+                  <Link href={`/category/${slug}/${sub.slug}`}>{sub.name}</Link>
+                </Button>
               ))}
             </div>
           )}

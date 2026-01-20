@@ -11,6 +11,7 @@ interface Post {
   body: string;
   featuredImageUrl?: string;
   categoryId: string;
+  categoryName?: string;
   updatedAt: string;
 }
 
@@ -103,7 +104,7 @@ export function CategoryPostsList({
           title={post.title}
           body={post.body}
           featuredImageUrl={post.featuredImageUrl}
-          categoryId={post.categoryId}
+          categoryName={post.categoryName}
           publishedAt={post.updatedAt}
           index={index}
         />

@@ -13,6 +13,7 @@ interface Post {
   body: string;
   featuredImageUrl?: string;
   categoryId: string;
+  categoryName?: string;
   updatedAt: string;
 }
 
@@ -100,7 +101,7 @@ function SearchContent() {
                       title={post.title}
                       body={post.body}
                       featuredImageUrl={post.featuredImageUrl}
-                      categoryId={post.categoryId}
+                      categoryName={post.categoryName}
                       publishedAt={post.updatedAt}
                       index={index}
                     />
