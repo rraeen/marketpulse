@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Calendar, Tag } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/utils/html-sanitizer";
 import { getPostById } from "@/lib/services/post";
 import { getCategoryById } from "@/lib/services/category";
 
@@ -90,67 +90,8 @@ export default async function PostDetailPage({
       day: "numeric",
     });
 
-    // Sanitize HTML content with error handling
-    let sanitizedBody: string;
-    try {
-      sanitizedBody = DOMPurify.sanitize(post.body, {
-    ALLOWED_TAGS: [
-      "p",
-      "br",
-      "strong",
-      "em",
-      "u",
-      "b",
-      "i",
-      "h1",
-      "h2",
-      "h3",
-      "h4",
-      "h5",
-      "h6",
-      "ul",
-      "ol",
-      "li",
-      "a",
-      "blockquote",
-      "code",
-      "pre",
-      "div",
-      "span",
-      "section",
-      "article",
-      "header",
-      "footer",
-      "main",
-      "aside",
-      "img",
-      "hr",
-      "table",
-      "thead",
-      "tbody",
-      "tr",
-      "th",
-      "td",
-    ],
-    ALLOWED_ATTR: [
-      "href",
-      "target",
-      "rel",
-      "src",
-      "alt",
-      "title",
-      "width",
-      "height",
-      "class",
-      "style",
-    ],
-    ALLOW_DATA_ATTR: false,
-      });
-    } catch (sanitizeError) {
-      console.error("Error sanitizing post body:", sanitizeError);
-      // Fallback to plain text if sanitization fails
-      sanitizedBody = post.body.replace(/<[^>]*>/g, ""); // Strip HTML tags as fallback
-    }
+    // Sanitize HTML content (server-safe, no JSDOM dependency)
+    const sanitizedBody = sanitizeHtml(post.body);
 
     return (
     <article className="flex-1 py-12 md:py-5">
