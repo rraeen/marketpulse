@@ -39,18 +39,11 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const post = await getPost(id);
-  console.log("generateMetadata - Post:", post);
-
-  if (!post) {
-    return {
-      title: "Post Not Found",
-    };
-  }
-
+  // IMPORTANT: Avoid DB calls here.
+  // `generateMetadata` runs separately from the page render and can double
+  // DB work on cold starts in production (leading to timeouts / 500s).
   return {
-    title: `${post.title} | MarketPulse`,
-    description: post.body.replace(/<[^>]*>/g, "").substring(0, 160),
+    title: `Post ${id} | MarketPulse`,
   };
 }
 

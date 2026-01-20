@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'www.socialsync.space',
+        hostname: '**.socialsync.space',
         pathname: '/**',
       },
       {
