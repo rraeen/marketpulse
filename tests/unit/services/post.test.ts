@@ -1,11 +1,15 @@
-import { createPost, updatePost, deletePost, getPostById, getPosts, isValidCategory, isValidStatus } from '@/lib/services/post';
+import { createPost, updatePost, deletePost, getPostById, getPosts, validateCategory, isValidStatus } from '@/lib/services/post';
 import { getDb } from '@/lib/db';
-import { Db, ObjectId } from 'mongodb';
+import { Db, ObjectId, type WithId } from 'mongodb';
 import bcrypt from 'bcryptjs';
+import type { Post } from '@/lib/models/post';
 
 describe('Post Service Unit Tests', () => {
   let db: Db;
   let adminId: ObjectId;
+  let stocksCategoryId: ObjectId;
+  let commoditiesCategoryId: ObjectId;
+  let investmentUpdatesCategoryId: ObjectId;
 
   beforeAll(async () => {
     db = await getDb();
@@ -20,11 +24,51 @@ describe('Post Service Unit Tests', () => {
       createdAt: new Date(),
     });
     adminId = admin.insertedId;
+
+    // Create categories used by post service validation
+    const now = new Date();
+    const categoriesInsert = await db.collection('categories').insertMany([
+      {
+        name: 'Stocks',
+        slug: 'stocks',
+        parentId: null,
+        order: 0,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        name: 'Commodities',
+        slug: 'commodities',
+        parentId: null,
+        order: 1,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        name: 'Investment Market Updates',
+        slug: 'investment-market-updates',
+        parentId: null,
+        order: 2,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    stocksCategoryId = categoriesInsert.insertedIds['0'] as ObjectId;
+    commoditiesCategoryId = categoriesInsert.insertedIds['1'] as ObjectId;
+    investmentUpdatesCategoryId = categoriesInsert.insertedIds['2'] as ObjectId;
   });
 
   afterAll(async () => {
     // Clean up admin user
     await db.collection('users').deleteOne({ _id: adminId });
+    // Clean up categories
+    await db
+      .collection('categories')
+      .deleteMany({ _id: { $in: [stocksCategoryId, commoditiesCategoryId, investmentUpdatesCategoryId] } });
   });
 
   beforeEach(async () => {
@@ -37,8 +81,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Test Post',
         body: 'This is a test post body',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
+        isTrending: false,
         adminId,
         featuredImageUrl: '/uploads/test.jpg'
       });
@@ -46,7 +91,7 @@ describe('Post Service Unit Tests', () => {
       expect(post).toBeDefined();
       expect(post.title).toBe('Test Post');
       expect(post.body).toBe('This is a test post body');
-      expect(post.categoryId).toBe('Stocks');
+      expect(post.categoryId.toString()).toBe(stocksCategoryId.toString());
       expect(post.status).toBe('Draft');
       expect(post.adminId.toString()).toBe(adminId.toString());
       expect(post.createdAt).toBeInstanceOf(Date);
@@ -58,8 +103,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Published Post',
         body: 'Published content',
-        categoryId: 'Investment Market Updates',
+        categoryId: investmentUpdatesCategoryId,
         status: 'Published',
+        isTrending: false,
         adminId
       });
 
@@ -71,8 +117,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Test Post',
         body: 'Test body',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
+        isTrending: false,
         adminId
       });
 
@@ -84,8 +131,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Test Post',
         body: 'Test body',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
+        isTrending: false,
         adminId
       });
       const afterCreate = new Date();
@@ -103,8 +151,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Original Title',
         body: 'Original body',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
+        isTrending: false,
         adminId
       });
       postId = post._id!;
@@ -154,8 +203,9 @@ describe('Post Service Unit Tests', () => {
       const post = await createPost({
         title: 'Post to Delete',
         body: 'Body',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
+        isTrending: false,
         adminId
       });
       postId = post._id!;
@@ -190,7 +240,7 @@ describe('Post Service Unit Tests', () => {
         {
           title: 'Published Post 1',
           body: 'Content 1',
-          categoryId: 'Stocks',
+          categoryId: stocksCategoryId,
           status: 'Published',
           adminId: adminId,
           createdAt: new Date('2026-01-10'),
@@ -199,7 +249,7 @@ describe('Post Service Unit Tests', () => {
         {
           title: 'Draft Post',
           body: 'Draft content',
-          categoryId: 'Stocks',
+          categoryId: stocksCategoryId,
           status: 'Draft',
           adminId: adminId,
           createdAt: new Date('2026-01-11'),
@@ -208,7 +258,7 @@ describe('Post Service Unit Tests', () => {
         {
           title: 'Published Post 2',
           body: 'Content 2',
-          categoryId: 'Commodities',
+          categoryId: commoditiesCategoryId,
           status: 'Published',
           adminId: adminId,
           createdAt: new Date('2026-01-12'),
@@ -218,27 +268,33 @@ describe('Post Service Unit Tests', () => {
     });
 
     it('should return only published posts when filtered by status', async () => {
-      const result = await getPosts({ status: 'Published' }, { page: 1, limit: 10 });
+      const result = (await getPosts(
+        { status: 'Published' },
+        { page: 1, limit: 10 }
+      )) as { posts: WithId<Post>[]; total: number; page: number; limit: number; totalPages: number };
 
       expect(result.posts.length).toBe(2);
-      result.posts.forEach(post => {
+      result.posts.forEach((post: WithId<Post>) => {
         expect(post.status).toBe('Published');
       });
     });
 
     it('should filter by category', async () => {
-      const result = await getPosts(
-        { categoryId: 'Stocks', status: 'Published' }, 
+      const result = (await getPosts(
+        { categoryId: stocksCategoryId, status: 'Published' },
         { page: 1, limit: 10 }
-      );
+      )) as { posts: WithId<Post>[]; total: number; page: number; limit: number; totalPages: number };
 
       expect(result.posts.length).toBe(1);
-      expect(result.posts[0].categoryId).toBe('Stocks');
+      expect(result.posts[0].categoryId.toString()).toBe(stocksCategoryId.toString());
       expect(result.posts[0].title).toBe('Published Post 1');
     });
 
     it('should support pagination', async () => {
-      const result = await getPosts({ status: 'Published' }, { page: 1, limit: 1 });
+      const result = (await getPosts(
+        { status: 'Published' },
+        { page: 1, limit: 1 }
+      )) as { posts: WithId<Post>[]; total: number; page: number; limit: number; totalPages: number };
 
       expect(result.posts.length).toBe(1);
       expect(result.page).toBe(1);
@@ -251,11 +307,16 @@ describe('Post Service Unit Tests', () => {
       const result = await getPosts({});
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(3); // All posts
+      if (Array.isArray(result)) {
+        expect(result.length).toBe(3); // All posts
+      }
     });
 
     it('should sort by createdAt descending', async () => {
-      const result = await getPosts({}) as any[];
+      const result = await getPosts({});
+      if (!Array.isArray(result)) {
+        throw new Error('Expected array result');
+      }
 
       // Most recent first
       expect(result[0].title).toBe('Published Post 2'); // 2026-01-12
@@ -272,7 +333,7 @@ describe('Post Service Unit Tests', () => {
       const published = await db.collection('posts').insertOne({
         title: 'Published Post',
         body: 'Published content',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Published',
         adminId: adminId,
         createdAt: new Date(),
@@ -283,7 +344,7 @@ describe('Post Service Unit Tests', () => {
       const draft = await db.collection('posts').insertOne({
         title: 'Draft Post',
         body: 'Draft content',
-        categoryId: 'Stocks',
+        categoryId: stocksCategoryId,
         status: 'Draft',
         adminId: adminId,
         createdAt: new Date(),
@@ -315,18 +376,15 @@ describe('Post Service Unit Tests', () => {
     });
   });
 
-  describe('isValidCategory', () => {
-    it('should return true for valid categories', () => {
-      expect(isValidCategory('Stocks')).toBe(true);
-      expect(isValidCategory('Commodities')).toBe(true);
-      expect(isValidCategory('Investment Market Updates')).toBe(true);
+  describe('validateCategory', () => {
+    it('should return true for active categories', async () => {
+      await expect(validateCategory(stocksCategoryId)).resolves.toBe(true);
+      await expect(validateCategory(commoditiesCategoryId)).resolves.toBe(true);
+      await expect(validateCategory(investmentUpdatesCategoryId)).resolves.toBe(true);
     });
 
-    it('should return false for invalid categories', () => {
-      expect(isValidCategory('InvalidCategory')).toBe(false);
-      expect(isValidCategory('')).toBe(false);
-      expect(isValidCategory(null)).toBe(false);
-      expect(isValidCategory(undefined)).toBe(false);
+    it('should return false for missing category', async () => {
+      await expect(validateCategory(new ObjectId())).resolves.toBe(false);
     });
   });
 

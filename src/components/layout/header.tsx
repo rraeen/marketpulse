@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 
 import Image from "next/image";
@@ -75,10 +76,30 @@ export function Header() {
     };
   }, []);
 
+  const closeAllMenus = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setHoveredCategory(null);
+    setHoveredMore(false);
+  }, []);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeAllMenus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [closeAllMenus]);
+
   const handleCategoryMouseEnter = (categoryId: string) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    // Make menus mutually exclusive
+    setHoveredMore(false);
     setHoveredCategory(categoryId);
   };
 
@@ -92,6 +113,8 @@ export function Header() {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+    // Make menus mutually exclusive
+    setHoveredCategory(null);
     setHoveredMore(true);
   };
 
@@ -118,25 +141,29 @@ export function Header() {
   const remaining = mainCategories.slice(3);
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
+    <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 border-b border-gray-200/30 dark:border-gray-800/30 transition-all duration-300",
         "navbar-light-mode",
         isScrolled && "backdrop-blur-md shadow-sm"
       )}
       style={{ 
-        position: "fixed", 
-        top: 0, 
-        left: 0, 
-        right: 0,
         backgroundColor: mounted && theme !== "dark" ? (isScrolled ? "rgba(22, 33, 62, 0.95)" : "#16213e") : undefined
       } as React.CSSProperties}
     >
-      <Container>
-        <nav className="flex h-16 items-center gap-8">
+      {/* 
+        IMPORTANT:
+        Keep the header element itself free of transforms.
+        Mobile menu uses `position: fixed` and some mobile browsers (notably iOS Safari)
+        misbehave when fixed elements are rendered inside a transformed ancestor.
+      */}
+      <motion.div
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] as const }}
+      >
+        <Container>
+          <nav className="flex h-16 items-center gap-8">
           {/* Logo */}
           <Link
             href="/"
@@ -153,7 +180,9 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-6 flex-1">
+          <div
+            className="hidden lg:flex items-center gap-6 flex-1"
+          >
             {/* First 3 Categories */}
             {firstThree.map((category) => {
               const isActive = pathname.startsWith(`/category/${category.slug}`);
@@ -174,7 +203,13 @@ export function Header() {
                     )}
                   >
                     {category.name}
-                    {hasSubcategories && <ChevronDown className="h-3.5 w-3.5" />}
+                    {/* Keep alignment consistent even when no submenu */}
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        hasSubcategories ? "opacity-100" : "opacity-0"
+                      )}
+                    />
                   </Link>
 
                   {/* Subcategory Dropdown */}
@@ -379,171 +414,191 @@ export function Header() {
               </AnimatePresence>
             </button>
           </div>
-        </nav>
+          </nav>
 
-        {/* Mobile Search Bar */}
+          {/* Mobile Search Bar */}
+            <AnimatePresence>
+              {isSearchOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="md:hidden border-t border-border overflow-hidden"
+                >
+                  <div className="p-4">
+                    <Suspense fallback={<div className="h-10" />}>
+                      <SearchInput />
+                    </Suspense>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+        </Container>
+      </motion.div>
+
+      {/* Mobile Menu (rendered in portal to avoid stacking-context issues on mobile) */}
+      {mounted &&
+        createPortal(
           <AnimatePresence>
-            {isSearchOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="md:hidden border-t border-border overflow-hidden"
-              >
-                <div className="p-4">
-                  <Suspense fallback={<div className="h-10" />}>
-                    <SearchInput />
-                  </Suspense>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-      </Container>
+            {isMobileMenuOpen && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 top-16 bg-background/95 backdrop-blur-md lg:hidden z-[55]"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                />
+                <motion.div
+                  initial={{ x: "100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="fixed top-16 right-0 bottom-0 w-64 bg-[#16213e] dark:bg-background border-l border-white/20 dark:border-border lg:hidden z-[60] overflow-y-auto"
+                >
+                  <nav className="flex flex-col p-6 gap-2">
+                    {/* Mobile Categories */}
+                    {mainCategories.map((category, index) => {
+                      const isExpanded = expandedCategories.has(category._id);
+                      const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+                      const isActive = pathname.startsWith(`/category/${category.slug}`);
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 top-16 bg-background/95 backdrop-blur-md md:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-16 right-0 bottom-0 w-64 bg-[#16213e] dark:bg-background border-l border-white/20 dark:border-border md:hidden z-50 overflow-y-auto"
-            >
-              <nav className="flex flex-col p-6 gap-2">
-                {/* Mobile Categories */}
-                {mainCategories.map((category, index) => {
-                  const isExpanded = expandedCategories.has(category._id);
-                  const hasSubcategories = category.subcategories && category.subcategories.length > 0;
-                  const isActive = pathname.startsWith(`/category/${category.slug}`);
-
-                  return (
-                    <div key={category._id}>
-                      <motion.div
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                      >
-                        <div className="flex items-center gap-2">
-                          {hasSubcategories && (
-                            <button
-                              onClick={() => toggleExpand(category._id)}
-                              className="p-1"
-                            >
-                              <ChevronDown
-                                className={cn(
-                                  "h-4 w-4 transition-transform",
-                                  isExpanded ? "rotate-0" : "-rotate-90"
-                                )}
-                              />
-                            </button>
-                          )}
-                          <Link
-                            href={`/category/${category.slug}`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className={cn(
-                              "flex-1 py-2 text-base font-medium hover:text-yellow-400 dark:hover:text-yellow-400 transition-colors",
-                              isActive ? "text-yellow-400 dark:text-yellow-400" : "text-white dark:text-foreground"
-                            )}
+                      return (
+                        <div key={category._id}>
+                          <motion.div
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
                           >
-                            {category.name}
-                          </Link>
-                        </div>
-                      </motion.div>
-
-                      {/* Mobile Subcategories */}
-                      {isExpanded && hasSubcategories && (
-                        <div className="ml-6 mt-1 space-y-1">
-                          {category.subcategories!.map((sub) => {
-                            const isSubActive = pathname === `/category/${category.slug}/${sub.slug}`;
-                            return (
+                            <div className="flex items-center gap-2">
+                              {hasSubcategories && (
+                                <button onClick={() => toggleExpand(category._id)} className="p-1">
+                                  <ChevronDown
+                                    className={cn(
+                                      "h-4 w-4 transition-transform",
+                                      isExpanded ? "rotate-0" : "-rotate-90"
+                                    )}
+                                  />
+                                </button>
+                              )}
                               <Link
-                                key={sub._id}
-                                href={`/category/${category.slug}/${sub.slug}`}
+                                href={`/category/${category.slug}`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={cn(
-                                  "block py-2 text-sm hover:text-yellow-400 transition-colors",
-                                  isSubActive ? "text-yellow-400" : "text-muted-foreground"
+                                  "flex-1 py-2 text-base font-medium hover:text-yellow-400 dark:hover:text-yellow-400 transition-colors",
+                                  isActive
+                                    ? "text-yellow-400 dark:text-yellow-400"
+                                    : "text-white dark:text-foreground"
                                 )}
                               >
-                                └─ {sub.name}
+                                {category.name}
                               </Link>
-                            );
-                          })}
+                            </div>
+                          </motion.div>
+
+                          {/* Mobile Subcategories */}
+                          {isExpanded && hasSubcategories && (
+                            <div className="ml-6 mt-1 space-y-1">
+                              {category.subcategories!.map((sub) => {
+                                const isSubActive = pathname === `/category/${category.slug}/${sub.slug}`;
+                                return (
+                                  <Link
+                                    key={sub._id}
+                                    href={`/category/${category.slug}/${sub.slug}`}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={cn(
+                                      "block py-2 text-sm hover:text-yellow-400 transition-colors",
+                                      isSubActive ? "text-yellow-400" : "text-muted-foreground"
+                                    )}
+                                  >
+                                    └─ {sub.name}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Mobile Auth Actions */}
+                    <div className="border-t border-border pt-4 mt-2 space-y-2">
+                      {/* Theme Toggle - Mobile - Admin Only */}
+                      {user?.role === "Admin" && (
+                        <div className="flex items-center justify-between px-2 py-2">
+                          <span className="text-sm font-medium">Theme</span>
+                          <ThemeToggle />
                         </div>
                       )}
-                    </div>
-                  );
-                })}
 
-                {/* Mobile Auth Actions */}
-                <div className="border-t border-border pt-4 mt-2 space-y-2">
-                  {/* Theme Toggle - Mobile - Admin Only */}
-                  {user?.role === "Admin" && (
-                    <div className="flex items-center justify-between px-2 py-2">
-                      <span className="text-sm font-medium">Theme</span>
-                      <ThemeToggle />
-                    </div>
-                  )}
-                  
-                  {user ? (
-                    <>
-                      {user.role === "Admin" && (
-                        <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                          <Button variant="ghost" size="sm" className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
-                            <Settings className="h-4 w-4" />
-                            Settings
+                      {user ? (
+                        <>
+                          {user.role === "Admin" && (
+                            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                              >
+                                <Settings className="h-4 w-4" />
+                                Settings
+                              </Button>
+                            </Link>
+                          )}
+                          <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                            >
+                              <User className="h-4 w-4" />
+                              Profile
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
+                            onClick={() => {
+                              setIsMobileMenuOpen(false);
+                              logout();
+                            }}
+                          >
+                            <LogOut className="h-4 w-4" />
+                            Logout
                           </Button>
-                        </Link>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-start gap-3 py-2">
+                            <Link
+                              href="/login"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground"
+                            >
+                              Sign In
+                            </Link>
+                            <span className="text-red-500 dark:text-red-400">/</span>
+                            <Link
+                              href="/register"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground"
+                            >
+                              Sign Up
+                            </Link>
+                          </div>
+                        </>
                       )}
-                      <Link href="/profile" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button variant="ghost" size="sm" className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground">
-                          <User className="h-4 w-4" />
-                          Profile
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start bg-transparent hover:bg-yellow-400 text-muted-foreground hover:text-foreground"
-                        onClick={() => {
-                          setIsMobileMenuOpen(false);
-                          logout();
-                        }}
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Logout
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground py-2 block">
-                        Sign In
-                      </Link>
-                      <div className="flex items-center justify-center gap-2 py-2">
-                        <span className="text-red-500 dark:text-red-400">/</span>
-                      </div>
-                      <Link href="/register" onClick={() => setIsMobileMenuOpen(false)} className="text-sm font-medium transition-colors hover:text-yellow-400 text-muted-foreground py-2 block">
-                        Sign Up
-                      </Link>
-                    </>
-                  )}
-                </div>
-              </nav>
-            </motion.div>
-          </>
+                    </div>
+                  </nav>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
         )}
-      </AnimatePresence>
-    </motion.header>
+    </header>
   );
 }

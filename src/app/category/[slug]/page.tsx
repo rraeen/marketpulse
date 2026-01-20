@@ -111,7 +111,7 @@ export default async function CategoryPage({
   const subcategoriesList: Category[] = subcategories || [];
 
   return (
-    <div className="flex-1 py-12 md:py-16">
+    <div className="flex-1 py-12 md:py-5">
       <Container>
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
@@ -124,12 +124,12 @@ export default async function CategoryPage({
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
+          {/* <h1 className="text-3xl md:text-4xl font-semibold tracking-tight mb-3">
             {category.name}
-          </h1>
-          <p className="text-muted-foreground text-lg mb-6">
+          </h1> */}
+          {/* <p className="text-muted-foreground text-lg mb-6">
             Expert insights and analysis in {category.name.toLowerCase()}
-          </p>
+          </p> */}
 
           {/* Subcategory Filters */}
           {subcategoriesList.length > 0 && (

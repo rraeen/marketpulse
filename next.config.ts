@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
         port: '3000',
         pathname: '/**',
       },
+      // Production domains
+      {
+        protocol: 'https',
+        hostname: 'socialsync.space',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.socialsync.space',
+        pathname: '/**',
+      },
       {
         protocol: 'https',
         hostname: '**.marketpulse.com',

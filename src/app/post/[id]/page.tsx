@@ -128,7 +128,7 @@ export default async function PostDetailPage({
   });
 
   return (
-    <article className="flex-1 py-12 md:py-16">
+    <article className="flex-1 py-12 md:py-5">
       <Container>
         <div className="max-w-4xl mx-auto">
           {/* Header */}

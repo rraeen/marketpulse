@@ -111,7 +111,11 @@ export function ValueCardsCarousel() {
                         delay: index * 0.1,
                         ease: [0.22, 1, 0.36, 1],
                       }}
-                      className="bg-background border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-all"
+                      className={[
+                        // On mobile we show only one card to avoid z-index/overlap glitches
+                        index > 0 ? "hidden md:block" : "",
+                        "relative bg-background border border-border rounded-lg p-6 shadow-sm hover:shadow-md transition-all",
+                      ].join(" ")}
                       onMouseEnter={() => setIsAutoPlaying(false)}
                       onMouseLeave={() => setIsAutoPlaying(true)}
                     >
@@ -130,7 +134,7 @@ export function ValueCardsCarousel() {
           </div>
 
           {/* Dots Indicator */}
-          <div className="flex justify-center items-center gap-2 mt-6">
+          <div className="relative z-20 flex justify-center items-center gap-2 mt-6">
             {valueCards.map((_, index) => (
               <button
                 key={index}
