@@ -15,20 +15,38 @@ async function getPost(id: string) {
       return null;
     }
 
-    const category = await getCategoryById(post.categoryId.toString());
+    // Handle category lookup with error handling
+    let categoryName = "Uncategorized";
+    try {
+      if (post.categoryId) {
+        const category = await getCategoryById(post.categoryId.toString());
+        categoryName = category?.name || "Uncategorized";
+      }
+    } catch (categoryError) {
+      console.error("Error fetching category:", categoryError);
+      // Continue with default category name
+    }
+
+    // Handle updatedAt - use createdAt as fallback if updatedAt doesn't exist
+    const updatedAt = post.updatedAt || post.createdAt || new Date();
 
     return {
       _id: post._id?.toString() || "",
-      title: post.title,
-      body: post.body,
-      featuredImageUrl: post.featuredImageUrl,
-      categoryId: post.categoryId.toString(),
-      categoryName: category?.name || "Uncategorized",
+      title: post.title || "",
+      body: post.body || "",
+      featuredImageUrl: post.featuredImageUrl || undefined,
+      categoryId: post.categoryId?.toString() || "",
+      categoryName,
       status: post.status,
-      updatedAt: post.updatedAt.toISOString(),
+      updatedAt: updatedAt instanceof Date ? updatedAt.toISOString() : new Date().toISOString(),
     };
   } catch (error) {
     console.error("Error fetching post:", error);
+    // Log more details in production for debugging
+    if (process.env.NODE_ENV === "production") {
+      console.error("Post ID:", id);
+      console.error("Error details:", error instanceof Error ? error.message : String(error));
+    }
     return null;
   }
 }
@@ -52,21 +70,30 @@ export default async function PostDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const post = await getPost(id);
+  try {
+    const { id } = await params;
+    const post = await getPost(id);
 
-  if (!post || post.status !== "Published") {
-    notFound();
-  }
+    if (!post || post.status !== "Published") {
+      notFound();
+    }
 
-  const formattedDate = new Date(post.updatedAt).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+    // Validate required fields
+    if (!post.title || !post.body) {
+      console.error("Post missing required fields:", { id, hasTitle: !!post.title, hasBody: !!post.body });
+      notFound();
+    }
 
-  // Sanitize HTML content
-  const sanitizedBody = DOMPurify.sanitize(post.body, {
+    const formattedDate = new Date(post.updatedAt).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Sanitize HTML content with error handling
+    let sanitizedBody: string;
+    try {
+      sanitizedBody = DOMPurify.sanitize(post.body, {
     ALLOWED_TAGS: [
       "p",
       "br",
@@ -118,9 +145,14 @@ export default async function PostDetailPage({
       "style",
     ],
     ALLOW_DATA_ATTR: false,
-  });
+      });
+    } catch (sanitizeError) {
+      console.error("Error sanitizing post body:", sanitizeError);
+      // Fallback to plain text if sanitization fails
+      sanitizedBody = post.body.replace(/<[^>]*>/g, ""); // Strip HTML tags as fallback
+    }
 
-  return (
+    return (
     <article className="flex-1 py-12 md:py-5">
       <Container>
         <div className="max-w-4xl mx-auto">
@@ -406,5 +438,17 @@ export default async function PostDetailPage({
         </div>
       </Container>
     </article>
-  );
+    );
+  } catch (error) {
+    console.error("Error rendering post page:", error);
+    // Log detailed error in production for debugging
+    if (process.env.NODE_ENV === "production") {
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+    // Return 404 instead of 500 to avoid exposing errors
+    notFound();
+  }
 }
